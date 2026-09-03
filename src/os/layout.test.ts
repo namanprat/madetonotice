@@ -60,7 +60,10 @@ test("packIcons fills a column before starting the next", () => {
     [0.5, 0.5 + CELL.h, 0.5 + CELL.h * 2, 0.5 + CELL.h * 3],
     "they step down by exactly one row pitch",
   );
-  assert.ok(points[4]!.x > points[0]!.x, "the fifth icon wraps to a new column");
+  assert.ok(
+    points[4]!.x > points[0]!.x,
+    "the fifth icon wraps to a new column",
+  );
   assert.equal(points[4]!.y, 0.5, "and starts back at the top");
 });
 
@@ -76,9 +79,34 @@ test("snapToSurface clamps a drag inside the desktop", () => {
   assert.ok(far.y + CELL.h <= surface.h + 0.001, "past the bottom edge");
 });
 
+test("a surface that measures zero does not pin icons to the origin", () => {
+  // A hidden tab, or a read taken before layout, reports 0x0. Clamping to the
+  // resulting negative bound used to snap every drag back to the corner, so
+  // the icon appeared not to move at all.
+  for (const surface of [
+    { w: 0, h: 0 },
+    { w: 2, h: 2 },
+  ]) {
+    const pos = snapToSurface({ x: 12, y: 9 }, surface, CELL);
+    assert.ok(
+      pos.x > 0 && pos.y > 0,
+      `surface ${surface.w}x${surface.h} collapsed the drag to ${pos.x},${pos.y}`,
+    );
+  }
+
+  // Negative input is still floored at zero, degenerate surface or not.
+  assert.deepEqual(snapToSurface({ x: -5, y: -5 }, { w: 0, h: 0 }, CELL), {
+    x: 0,
+    y: 0,
+  });
+});
+
 test("neighbourIndices does not wrap around board edges", () => {
   // Corner cell 0 on a 9x9 board has exactly three neighbours.
-  assert.deepEqual(neighbourIndices(0, 9, 9).sort((a, b) => a - b), [1, 9, 10]);
+  assert.deepEqual(
+    neighbourIndices(0, 9, 9).sort((a, b) => a - b),
+    [1, 9, 10],
+  );
   // A middle cell has all eight.
   assert.equal(neighbourIndices(40, 9, 9).length, 8);
 });
@@ -87,7 +115,8 @@ test("placeMines lays exactly the requested count and spares the first click", (
   const board = createBoard();
   // Deterministic "random" so a failure is reproducible.
   let seed = 7;
-  const rng = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const rng = () =>
+    (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
 
   const seeded = placeMines(board, 40, rng);
   assert.equal(
@@ -107,7 +136,11 @@ test("first click is never a mine", () => {
     const at = i % 81;
     const board = reveal(createBoard(), at);
     assert.equal(board.exploded, false, `opening on cell ${at} exploded`);
-    assert.equal(board.cells[at]!.revealed, true, `cell ${at} was not revealed`);
+    assert.equal(
+      board.cells[at]!.revealed,
+      true,
+      `cell ${at} was not revealed`,
+    );
   }
 });
 

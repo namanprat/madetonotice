@@ -87,9 +87,18 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
     .desktop_wrap .window_ctrl,
     .desktop_wrap .context_item,
     .desktop_wrap .start_item,
-    .desktop_wrap .taskbar_tab,
-    .desktop_wrap .desktop_icon {
+    .desktop_wrap .taskbar_tab {
       cursor: var(--os-cursor-arrow), default;
+    }
+
+    .desktop_wrap .desktop_icon {
+      cursor: var(--os-cursor-grab), grab;
+    }
+
+    /* Held on the root so the fist persists wherever the pointer travels. */
+    .desktop_wrap.is-dragging,
+    .desktop_wrap.is-dragging .desktop_icon {
+      cursor: var(--os-cursor-grabbing), grabbing;
     }
 
     .desktop_wrap .app_iframe_wrap,

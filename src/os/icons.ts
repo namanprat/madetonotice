@@ -243,6 +243,15 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
       }, LONG_MS);
     }
 
+    // Capture the pointer to this icon. Without it, dragging across an
+    // embedded frame (Paint, Internet) hands the pointer to that document and
+    // the drag dies mid-gesture.
+    try {
+      btn.setPointerCapture(e.pointerId);
+    } catch {
+      // Some pointer types refuse capture; the listeners below still work.
+    }
+
     const onMove = (ev: PointerEvent) => {
       lastX = ev.clientX;
       lastY = ev.clientY;
@@ -253,7 +262,10 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
       ) {
         return;
       }
-      moved = true;
+      if (!moved) {
+        moved = true;
+        ctx.root.classList.add("is-dragging");
+      }
       window.clearTimeout(longTimer);
       const raw = {
         x: (ev.clientX - (deskRect?.left ?? 0)) / rem - 1,
@@ -275,8 +287,10 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
 
     const onUp = () => {
       window.clearTimeout(longTimer);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
+      btn.removeEventListener("pointermove", onMove);
+      btn.removeEventListener("pointerup", onUp);
+      btn.removeEventListener("pointercancel", onUp);
+      ctx.root.classList.remove("is-dragging");
       ctx.el.iconLayer
         ?.querySelector('[data-icon-id="recycle-bin"]')
         ?.classList.remove("is-drop-target");
@@ -287,8 +301,11 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
       }
     };
 
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    // Captured events retarget to the button, so listen there rather than on
+    // window — and end the drag on pointercancel as well as pointerup.
+    btn.addEventListener("pointermove", onMove);
+    btn.addEventListener("pointerup", onUp);
+    btn.addEventListener("pointercancel", onUp);
   });
 
   // Mouse opens on a real dblclick; touch has no reliable dblclick, so it gets

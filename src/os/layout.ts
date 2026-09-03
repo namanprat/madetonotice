@@ -34,7 +34,11 @@ export const SNAP = 0.625;
  * Guarantees every returned point sits inside `surface`, which is what keeps
  * icons reachable on a narrow phone.
  */
-export function packIcons(count: number, surface: Surface, cell: Cell): Point[] {
+export function packIcons(
+  count: number,
+  surface: Surface,
+  cell: Cell,
+): Point[] {
   const rows = Math.max(1, Math.floor((surface.h - MARGIN) / cell.h));
   const cols = Math.max(1, Math.floor((surface.w - MARGIN) / cell.w));
   const out: Point[] = [];
@@ -59,9 +63,21 @@ export function snapToSurface(
 ): Point {
   const snap = (n: number) => Math.round(n / SNAP) * SNAP;
   return {
-    x: clamp(snap(point.x), 0, Math.max(0, surface.w - cell.w)),
-    y: clamp(snap(point.y), 0, Math.max(0, surface.h - cell.h)),
+    x: bound(snap(point.x), surface.w - cell.w),
+    y: bound(snap(point.y), surface.h - cell.h),
   };
+}
+
+/**
+ * Clamp into `[0, max]`, but only when `max` is a real bound.
+ *
+ * A surface can measure zero — a hidden tab, a window collapsed to nothing,
+ * or a read taken before layout has run — which makes `max` negative. Clamping
+ * to a negative bound pins every icon to the origin, so a drag looks like it
+ * does nothing. Dropping the upper bound is much better than teleporting.
+ */
+function bound(n: number, max: number): number {
+  return max > 0 ? clamp(n, 0, max) : Math.max(0, n);
 }
 
 export function clamp(n: number, min: number, max: number): number {
