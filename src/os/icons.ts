@@ -9,7 +9,7 @@ import {
   type Surface,
 } from "@/os/layout.ts";
 
-const LONG_MS = 500;
+const LONG_MS = 550;
 
 /**
  * Pointer travel in px before a press counts as a drag rather than a tap.
@@ -18,7 +18,7 @@ const LONG_MS = 500;
  * threshold classified most taps as drags, so they were swallowed instead of
  * opening anything — the single biggest cause of taps "not working".
  */
-const SLOP = { mouse: 4, touch: 12 };
+const SLOP = { mouse: 4, touch: 28 };
 
 function slopFor(type: string): number {
   return type === "touch" || type === "pen" ? SLOP.touch : SLOP.mouse;
@@ -232,12 +232,15 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
   let moved = false;
   /** Set when a long-press opened the menu, so the release is not also a tap. */
   let longFired = false;
+  /** One open per gesture — pointerup and click can both fire on touch. */
+  let opened = false;
   let lastPointerType = "mouse";
 
   btn.addEventListener("pointerdown", (e) => {
     lastPointerType = e.pointerType;
     moved = false;
     longFired = false;
+    opened = false;
     const slop = slopFor(e.pointerType);
     const startX = e.clientX;
     const startY = e.clientY;
@@ -330,7 +333,17 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
    * a single tap: there is no hover to preview with, every phone OS opens on
    * one tap, and requiring two taps inside a timeout on top of a slop test
    * made opening anything a coin flip. Long-press still gives the menu.
+   *
+   * Open from both pointerup and click — browsers already classify a tap via
+   * click; pointerup covers devices that swallow the synthetic click after
+   * setPointerCapture. Guards keep mouse on double-click only.
    */
+  const tryOpenTouch = () => {
+    if (lastPointerType !== "touch" || moved || longFired || opened) return;
+    opened = true;
+    ctx.openIcon(iconId);
+  };
+
   btn.addEventListener("dblclick", (e) => {
     if (lastPointerType === "touch") return;
     e.preventDefault();
@@ -338,13 +351,12 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
     if (!moved) ctx.openIcon(iconId);
   });
 
-  btn.addEventListener("pointerup", (e) => {
-    if (e.pointerType !== "touch") return;
-    if (moved || longFired) return;
-    ctx.openIcon(iconId);
-  });
+  btn.addEventListener("pointerup", tryOpenTouch);
 
-  btn.addEventListener("click", (e) => e.stopPropagation());
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    tryOpenTouch();
+  });
 
   btn.addEventListener("contextmenu", (e) => {
     e.preventDefault();
