@@ -13,16 +13,12 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
 ---
 
 <section class="desktop_wrap" data-os-root>
-  <div class="splash_wrap" aria-live="polite" title="Click to skip">
-    <pre class="post_text">Made to Notice BIOS v1.0
-Copyright (c) Notice. All rights reserved.
-
-Detecting verticals ......... MARKETING, PRODUCT DESIGN
-Client slots ................ 3 of 4 OCCUPIED
-Display ..................... 640 x 480, 16 colours
-Attention ................... OK
-
-Starting Made to Notice<span class="post_caret">_</span></pre>
+  <div class="splash_wrap" aria-live="polite">
+    <div class="splash_inner">
+      <p class="splash_title">Made to Notice</p>
+      <p class="splash_text">Starting…</p>
+      <div class="splash_bar" aria-hidden="true"></div>
+    </div>
   </div>
 
   <div class="desktop_surface">
@@ -47,17 +43,12 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
         <button type="button" class="os_btn mascot_close">Close</button>
       </div>
     </div>
-    <!--
-      The studio mascot: an eye that blinks and follows the pointer. Replaces
-      the Win95 assistant, which was both a borrowed asset and a borrowed idea.
-    -->
-    <div class="mascot_figure" aria-hidden="true">
-      <div class="mascot_eye">
-        <div class="mascot_pupil"></div>
-        <div class="mascot_lid"></div>
-      </div>
-      <div class="mascot_base"></div>
-    </div>
+    <img
+      class="mascot_figure"
+      src="/os/icons/clippyani1.gif"
+      alt=""
+      draggable="false"
+    />
   </div>
 
   <ContentOsWindow />
@@ -179,16 +170,17 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
       );
     }
 
-    /* ── POST screen ───────────────────────────────────────────────────── */
+    /* ── Loading screen ────────────────────────────────────────────────── */
 
     .splash_wrap {
       position: absolute;
       inset: 0;
       z-index: 1000;
-      padding: 2rem 1.5rem;
-      background-color: #000000;
-      color: #c8c8c8;
-      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--os-desktop);
+      color: var(--os-title-text);
       transition: opacity 300ms linear;
     }
 
@@ -197,21 +189,53 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
       pointer-events: none;
     }
 
-    .post_text {
+    .splash_inner {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+      width: min(16rem, 80%);
+    }
+
+    .splash_title {
       margin: 0;
-      font-family: var(--os-font);
-      font-size: var(--os-type-ui);
-      line-height: 1.6;
-      white-space: pre-wrap;
+      font-size: 1.125rem;
+      font-weight: 700;
     }
 
-    .post_caret {
-      animation: post-blink 1s steps(1) infinite;
+    .splash_text {
+      margin: 0;
+      font-size: var(--os-type-tiny);
+      color: color-mix(in srgb, var(--os-title-text) 85%, transparent);
     }
 
-    @keyframes post-blink {
+    .splash_bar {
+      width: 100%;
+      height: 1.25rem;
+      padding: 0.125rem;
+      background-color: var(--os-face);
+      border: var(--os-hair) solid #000000;
+      border-right-color: var(--os-highlight);
+      border-bottom-color: var(--os-highlight);
+    }
+
+    .splash_bar::after {
+      content: "";
+      display: block;
+      height: 100%;
+      background-color: var(--os-title);
+      animation: splash-load 1s linear infinite;
+    }
+
+    @keyframes splash-load {
+      0% {
+        width: 10%;
+      }
       50% {
-        opacity: 0;
+        width: 70%;
+      }
+      100% {
+        width: 100%;
       }
     }
 
@@ -250,7 +274,7 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
      * reserves the space so selecting an icon shifts nothing.
      */
     .desktop_icon.is-active .desktop_icon_img {
-      filter: brightness(0.35) sepia(1) saturate(6) hue-rotate(35deg);
+      filter: brightness(0.4) sepia(1) saturate(12) hue-rotate(190deg);
     }
 
     .desktop_icon_label {
@@ -431,7 +455,7 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
       right: 0.75rem;
       bottom: calc(var(--os-taskbar-height) + 0.5rem);
       z-index: 70;
-      width: 4.5rem;
+      width: 6.25rem;
       display: none;
     }
 
@@ -473,77 +497,12 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
       gap: 0.375rem;
     }
 
-    /*
-     * An eye on a plinth, drawn in CSS. It blinks on a loop and its pupil
-     * tracks the pointer, so the thing that represents the studio is visibly
-     * paying attention to you.
-     */
     .mascot_figure {
-      position: relative;
-      width: 4.5rem;
-      height: 4.5rem;
-      cursor: var(--os-cursor-help), help;
-    }
-
-    .mascot_eye {
-      position: absolute;
-      inset: 0 0 0.875rem 0;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background-color: var(--os-highlight);
-      border: 0.1875rem solid #000000;
-      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-    }
-
-    .mascot_pupil {
-      width: 1.5rem;
-      height: 1.5rem;
-      background-color: var(--brand-500);
-      border: 0.1875rem solid #000000;
-      border-radius: 50%;
-      transition: transform 90ms linear;
-    }
-
-    /* The lid sweeps down and back on a long loop — a blink, not a strobe. */
-    .mascot_lid {
-      position: absolute;
-      inset: 0;
-      background-color: var(--os-face);
-      transform-origin: top;
-      transform: scaleY(0);
-      animation: mascot-blink 5.5s ease-in-out infinite;
-    }
-
-    @keyframes mascot-blink {
-      0%,
-      92%,
-      100% {
-        transform: scaleY(0);
-      }
-      95%,
-      97% {
-        transform: scaleY(1);
-      }
-    }
-
-    .mascot_base {
-      position: absolute;
-      inset: auto 0.75rem 0 0.75rem;
-      height: 0.75rem;
-      background-color: var(--os-face);
-      border: 0.125rem solid var(--os-highlight);
-      border-bottom-color: #000000;
-      border-right-color: #000000;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .mascot_lid {
-        animation: none;
-      }
-      .mascot_pupil {
-        transition: none;
-      }
+      width: 6.25rem;
+      height: auto;
+      /* The GIF is a smooth 17-frame animation, not pixel art. */
+      image-rendering: auto;
+      pointer-events: none;
     }
 
     /* ── Screensaver ───────────────────────────────────────────────────── */
@@ -670,16 +629,7 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
     @media (width < 30rem) {
       .mascot_wrap,
       .mascot_figure {
-        width: 3.25rem;
-      }
-
-      .mascot_figure {
-        height: 3.25rem;
-      }
-
-      .mascot_pupil {
-        width: 1.125rem;
-        height: 1.125rem;
+        width: 4.5rem;
       }
 
       .mascot_bubble {
@@ -689,10 +639,6 @@ Starting Made to Notice<span class="post_caret">_</span></pre>
       .toast_host {
         left: 0.75rem;
         right: 0.75rem;
-      }
-
-      .post_text {
-        font-size: var(--os-type);
       }
 
       .saver_marquee {

@@ -33,8 +33,8 @@ import {
 const MENU_W = 160;
 const MENU_ROW = 26;
 
-/** How long the POST screen holds before the desktop appears. */
-const POST_MS = 2200;
+/** How long the loading screen holds before the desktop appears. */
+const SPLASH_MS = 900;
 
 export function bootDesktop(root: HTMLElement): void {
   if (root.dataset.scriptInitialized) return;
@@ -247,27 +247,6 @@ export function bootDesktop(root: HTMLElement): void {
     ?.querySelector(".mascot_next")
     ?.addEventListener("click", () => ctx.showMascot());
 
-  // The eye tracks the pointer. It is the whole character of the thing: you
-  // notice it noticing you.
-  const pupil = ctx.el.mascot?.querySelector<HTMLElement>(".mascot_pupil");
-  if (pupil) {
-    window.addEventListener(
-      "pointermove",
-      (e) => {
-        const eye = ctx.el.mascot?.querySelector(".mascot_eye");
-        if (!eye) return;
-        const r = eye.getBoundingClientRect();
-        if (r.width === 0) return;
-        const dx = e.clientX - (r.left + r.width / 2);
-        const dy = e.clientY - (r.top + r.height / 2);
-        const angle = Math.atan2(dy, dx);
-        const reach = Math.min(Math.hypot(dx, dy) / 40, 1) * (r.width * 0.15);
-        pupil.style.transform = `translate(${Math.cos(angle) * reach}px, ${Math.sin(angle) * reach}px)`;
-      },
-      { passive: true },
-    );
-  }
-
   // Icons the user has not placed themselves re-pack when the viewport changes,
   // so a narrow phone never leaves one stranded off the right edge.
   let resizeTimer: number | undefined;
@@ -286,8 +265,7 @@ export function bootDesktop(root: HTMLElement): void {
   ctx.renderIcons();
   ctx.renderTaskbar();
 
-  // The POST screen is skippable: nobody should be made to sit through a boot
-  // sequence twice.
+  // Skippable: nobody should be made to sit through a boot sequence twice.
   const finishBoot = () => {
     const splash = ctx.el.splash;
     if (!splash || splash.classList.contains("is-done")) return;
@@ -299,5 +277,5 @@ export function bootDesktop(root: HTMLElement): void {
   };
 
   ctx.el.splash?.addEventListener("click", finishBoot);
-  window.setTimeout(finishBoot, POST_MS);
+  window.setTimeout(finishBoot, SPLASH_MS);
 }

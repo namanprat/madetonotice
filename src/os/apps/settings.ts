@@ -12,7 +12,7 @@ import { startScreensaver } from "@/os/screensaver.ts";
 
 /** Title-bar swatches, replacing the browser's native colour picker. */
 const TITLE_COLOURS = [
-  { label: "Notice", value: "#3d5410" },
+  { label: "Notice", value: "#004fff" },
   { label: "Navy", value: "#14045c" },
   { label: "Classic", value: "#000080" },
   { label: "Teal", value: "#0a5f5c" },
