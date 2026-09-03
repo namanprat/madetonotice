@@ -284,6 +284,7 @@ function wireDrag(
     const offsetX = e.clientX - win.x;
     const offsetY = e.clientY - win.y;
     bar.setPointerCapture(e.pointerId);
+    ctx.root.classList.add("is-dragging");
 
     const onMove = (ev: PointerEvent) => {
       const host = ctx.el.windowHost?.getBoundingClientRect();
@@ -298,12 +299,15 @@ function wireDrag(
     };
 
     const onUp = () => {
+      ctx.root.classList.remove("is-dragging");
       bar.removeEventListener("pointermove", onMove);
       bar.removeEventListener("pointerup", onUp);
+      bar.removeEventListener("pointercancel", onUp);
     };
 
     bar.addEventListener("pointermove", onMove);
     bar.addEventListener("pointerup", onUp);
+    bar.addEventListener("pointercancel", onUp);
   });
 }
 

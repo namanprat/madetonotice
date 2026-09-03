@@ -9,10 +9,20 @@ import {
   type Surface,
 } from "@/os/layout.ts";
 
-const LONG_MS = 800;
-const DOUBLE_MS = 500;
-/** Pointer travel in px before a press counts as a drag, not a click. */
-const DRAG_SLOP = 4;
+const LONG_MS = 500;
+
+/**
+ * Pointer travel in px before a press counts as a drag rather than a tap.
+ *
+ * A mouse cursor sits still; a fingertip does not. Judging touch by the mouse
+ * threshold classified most taps as drags, so they were swallowed instead of
+ * opening anything — the single biggest cause of taps "not working".
+ */
+const SLOP = { mouse: 4, touch: 12 };
+
+function slopFor(type: string): number {
+  return type === "touch" || type === "pen" ? SLOP.touch : SLOP.mouse;
+}
 
 /** Icon cell pitch in rem, derived from the current icon size. */
 function cellFor(ctx: Ctx): Cell {
@@ -220,9 +230,15 @@ export function showIconMenu(
 function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
   let longTimer: number | undefined;
   let moved = false;
+  /** Set when a long-press opened the menu, so the release is not also a tap. */
+  let longFired = false;
+  let lastPointerType = "mouse";
 
   btn.addEventListener("pointerdown", (e) => {
+    lastPointerType = e.pointerType;
     moved = false;
+    longFired = false;
+    const slop = slopFor(e.pointerType);
     const startX = e.clientX;
     const startY = e.clientY;
     let lastX = e.clientX;
@@ -239,6 +255,7 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
 
     if (e.pointerType === "touch") {
       longTimer = window.setTimeout(() => {
+        longFired = true;
         showIconMenu(ctx, e.clientX, e.clientY, iconId);
       }, LONG_MS);
     }
@@ -257,8 +274,8 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
       lastY = ev.clientY;
       if (
         !moved &&
-        Math.abs(ev.clientX - startX) <= DRAG_SLOP &&
-        Math.abs(ev.clientY - startY) <= DRAG_SLOP
+        Math.abs(ev.clientX - startX) <= slop &&
+        Math.abs(ev.clientY - startY) <= slop
       ) {
         return;
       }
@@ -308,27 +325,23 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
     btn.addEventListener("pointercancel", onUp);
   });
 
-  // Mouse opens on a real dblclick; touch has no reliable dblclick, so it gets
-  // the manual tap clock instead. Gating on pointerType stops both firing.
+  /*
+   * Mouse keeps the desktop convention of double-click to open. Touch opens on
+   * a single tap: there is no hover to preview with, every phone OS opens on
+   * one tap, and requiring two taps inside a timeout on top of a slop test
+   * made opening anything a coin flip. Long-press still gives the menu.
+   */
   btn.addEventListener("dblclick", (e) => {
+    if (lastPointerType === "touch") return;
     e.preventDefault();
     e.stopPropagation();
     if (!moved) ctx.openIcon(iconId);
   });
 
   btn.addEventListener("pointerup", (e) => {
-    if (e.pointerType !== "touch" || moved) return;
-    const now = Date.now();
-    const prev = Number(ctx.root.dataset.lastIconTap ?? 0);
-    const prevId = ctx.root.dataset.lastIconId ?? "";
-    if (prevId === iconId && now - prev < DOUBLE_MS) {
-      ctx.root.dataset.lastIconTap = "0";
-      ctx.root.dataset.lastIconId = "";
-      ctx.openIcon(iconId);
-    } else {
-      ctx.root.dataset.lastIconTap = String(now);
-      ctx.root.dataset.lastIconId = iconId;
-    }
+    if (e.pointerType !== "touch") return;
+    if (moved || longFired) return;
+    ctx.openIcon(iconId);
   });
 
   btn.addEventListener("click", (e) => e.stopPropagation());

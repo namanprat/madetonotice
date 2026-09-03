@@ -95,9 +95,15 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
       cursor: var(--os-cursor-grab), grab;
     }
 
-    /* Held on the root so the fist persists wherever the pointer travels. */
+    /*
+     * Held on the root so the closed hand persists wherever the pointer
+     * travels during a move — over other icons, over a window, past the edge.
+     * Resize grips keep their own directional cursors; only moves grab.
+     */
     .desktop_wrap.is-dragging,
-    .desktop_wrap.is-dragging .desktop_icon {
+    .desktop_wrap.is-dragging .desktop_icon,
+    .desktop_wrap.is-dragging .window_wrap,
+    .desktop_wrap.is-dragging .window_titlebar {
       cursor: var(--os-cursor-grabbing), grabbing;
     }
 
@@ -655,9 +661,54 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
       }
     }
 
+    /*
+     * Anything tappable opts out of double-tap zoom. Without this the browser
+     * holds every tap ~300ms to see whether a second one is coming, which
+     * reads as controls that sometimes respond and sometimes do not.
+     */
+    .desktop_wrap button,
+    .desktop_wrap a,
+    .desktop_wrap input,
+    .desktop_wrap textarea,
+    .desktop_wrap label,
+    .desktop_wrap .context_item,
+    .desktop_wrap .folder_item,
+    .desktop_wrap .launcher_item {
+      touch-action: manipulation;
+    }
+
+    /* The icons run their own drag, so they keep opting out of everything. */
+    .desktop_wrap .desktop_icon {
+      touch-action: none;
+    }
+
     @media (pointer: coarse) {
       .context_item {
         padding-block: 0.5rem;
+      }
+
+      /* Lift the smallest hit targets toward a fingertip. */
+      .window_ctrl {
+        width: 1.625rem;
+        height: 1.625rem;
+      }
+
+      .window_menu {
+        padding: 0.375rem 0.5rem;
+      }
+
+      .os_btn {
+        min-height: 2rem;
+      }
+
+      .folder_item,
+      .launcher_item {
+        min-height: 3.25rem;
+      }
+
+      /* Hover never resolves on touch, so do not let it stick. */
+      .desktop_wrap *:hover {
+        cursor: inherit;
       }
     }
   }
