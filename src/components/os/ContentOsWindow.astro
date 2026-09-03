@@ -264,8 +264,10 @@
       border-right-color: var(--os-highlight);
       border-bottom-color: var(--os-highlight);
       overflow: auto;
-      /* Restores touch scrolling that the desktop surface opts out of. */
+      /* Scrollable by touch. Effective only because the desktop surface no
+         longer sets `touch-action: none` on every ancestor. */
       touch-action: pan-x pan-y;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* ── Status bar ────────────────────────────────────────────────────── */

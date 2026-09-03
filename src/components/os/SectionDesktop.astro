@@ -81,6 +81,8 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
       image-rendering: pixelated;
       -webkit-font-smoothing: none;
       cursor: var(--os-cursor-arrow), default;
+      /* No grey flash on tap; the OS draws its own pressed states. */
+      -webkit-tap-highlight-color: transparent;
     }
 
     .desktop_wrap .os_btn,
@@ -131,11 +133,11 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
       inset: 0 0 var(--os-taskbar-height) 0;
       overflow: clip;
       /*
-       * Scoped here rather than on <body>: the desktop itself should not
-       * pan or pinch, but window bodies and the launcher must still scroll,
-       * and they opt back in.
+       * No blanket `touch-action: none` here. A descendant cannot opt back in
+       * — the browser intersects the value down the ancestor chain — so
+       * setting it on the surface silently made every window body unscrollable
+       * on touch. Only the elements that actually run a drag opt out, below.
        */
-      touch-action: none;
     }
 
     .desktop_icons {
@@ -469,13 +471,25 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
       position: absolute;
       right: 0.75rem;
       bottom: calc(var(--os-taskbar-height) + 0.5rem);
-      z-index: 70;
+      /*
+       * Below the taskbar and below every window. It used to sit at 70, far
+       * above windows at 11+, so its bubble silently ate taps on whatever it
+       * covered — and focusing a window re-summoned it over that window.
+       */
+      z-index: 8;
       width: 6.25rem;
       display: none;
+      /* Only the bubble is interactive; the figure and the box around it
+         must never intercept a tap meant for what is underneath. */
+      pointer-events: none;
     }
 
     .mascot_wrap.is-active {
       display: block;
+    }
+
+    .mascot_bubble {
+      pointer-events: auto;
     }
 
     .mascot_bubble {
@@ -673,7 +687,10 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
     .desktop_wrap label,
     .desktop_wrap .context_item,
     .desktop_wrap .folder_item,
-    .desktop_wrap .launcher_item {
+    .desktop_wrap .launcher_item,
+    .desktop_wrap .calendar_day,
+    .desktop_wrap .drive_item,
+    .desktop_wrap .mine_cell {
       touch-action: manipulation;
     }
 

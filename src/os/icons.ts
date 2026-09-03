@@ -2,27 +2,13 @@ import type { OsIcon } from "@/content/os.ts";
 import type { Ctx } from "@/os/context.ts";
 import { esc } from "@/os/context.ts";
 import { confirmBox, promptBox } from "@/os/dialog.ts";
+import { onDrag } from "@/os/drag.ts";
 import {
   packIcons,
   snapToSurface,
   type Cell,
   type Surface,
 } from "@/os/layout.ts";
-
-const LONG_MS = 550;
-
-/**
- * Pointer travel in px before a press counts as a drag rather than a tap.
- *
- * A mouse cursor sits still; a fingertip does not. Judging touch by the mouse
- * threshold classified most taps as drags, so they were swallowed instead of
- * opening anything — the single biggest cause of taps "not working".
- */
-const SLOP = { mouse: 4, touch: 28 };
-
-function slopFor(type: string): number {
-  return type === "touch" || type === "pen" ? SLOP.touch : SLOP.mouse;
-}
 
 /** Icon cell pitch in rem, derived from the current icon size. */
 function cellFor(ctx: Ctx): Cell {
@@ -228,137 +214,84 @@ export function showIconMenu(
 }
 
 function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
-  let longTimer: number | undefined;
-  let moved = false;
-  /** Set when a long-press opened the menu, so the release is not also a tap. */
-  let longFired = false;
-  /** One open per gesture — pointerup and click can both fire on touch. */
-  let opened = false;
-  let lastPointerType = "mouse";
+  const rem = rootFontSize();
+  let deskRect: DOMRect | undefined;
 
-  btn.addEventListener("pointerdown", (e) => {
-    lastPointerType = e.pointerType;
-    moved = false;
-    longFired = false;
-    opened = false;
-    const slop = slopFor(e.pointerType);
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let lastX = e.clientX;
-    let lastY = e.clientY;
-    const rem = rootFontSize();
-    const deskRect = ctx.el.desk?.getBoundingClientRect();
+  const select = (e: PointerEvent | MouseEvent) => {
+    if (ctx.selected.has(iconId)) return;
+    const add = e.ctrlKey || e.metaKey;
+    selectIcons(ctx, add ? [...ctx.selected, iconId] : [iconId]);
+  };
 
-    if (!ctx.selected.has(iconId)) {
-      selectIcons(
-        ctx,
-        e.ctrlKey || e.metaKey ? [...ctx.selected, iconId] : [iconId],
+  onDrag(btn, {
+    onStart: (e) => {
+      select(e);
+      deskRect = ctx.el.desk?.getBoundingClientRect();
+      ctx.root.classList.add("is-dragging");
+    },
+
+    onMove: (e) => {
+      const pos = snapToSurface(
+        {
+          x: (e.clientX - (deskRect?.left ?? 0)) / rem - 1,
+          y: (e.clientY - (deskRect?.top ?? 0)) / rem - 1,
+        },
+        surfaceFor(ctx),
+        cellFor(ctx),
       );
-    }
-
-    if (e.pointerType === "touch") {
-      longTimer = window.setTimeout(() => {
-        longFired = true;
-        showIconMenu(ctx, e.clientX, e.clientY, iconId);
-      }, LONG_MS);
-    }
-
-    // Capture the pointer to this icon. Without it, dragging across an
-    // embedded frame (Paint, Internet) hands the pointer to that document and
-    // the drag dies mid-gesture.
-    try {
-      btn.setPointerCapture(e.pointerId);
-    } catch {
-      // Some pointer types refuse capture; the listeners below still work.
-    }
-
-    const onMove = (ev: PointerEvent) => {
-      lastX = ev.clientX;
-      lastY = ev.clientY;
-      if (
-        !moved &&
-        Math.abs(ev.clientX - startX) <= slop &&
-        Math.abs(ev.clientY - startY) <= slop
-      ) {
-        return;
-      }
-      if (!moved) {
-        moved = true;
-        ctx.root.classList.add("is-dragging");
-      }
-      window.clearTimeout(longTimer);
-      const raw = {
-        x: (ev.clientX - (deskRect?.left ?? 0)) / rem - 1,
-        y: (ev.clientY - (deskRect?.top ?? 0)) / rem - 1,
-      };
-      const pos = snapToSurface(raw, surfaceFor(ctx), cellFor(ctx));
       ctx.state.positions[iconId] = pos;
       btn.style.left = `${pos.x}rem`;
       btn.style.top = `${pos.y}rem`;
+
       // Only light the bin up for something it will actually accept.
       const icon = ctx.state.icons.find((i) => i.id === iconId);
       ctx.el.iconLayer
         ?.querySelector('[data-icon-id="recycle-bin"]')
         ?.classList.toggle(
           "is-drop-target",
-          !icon?.protected && hitRecycleBin(ctx, ev.clientX, ev.clientY),
+          !icon?.protected && hitRecycleBin(ctx, e.clientX, e.clientY),
         );
-    };
+    },
 
-    const onUp = () => {
-      window.clearTimeout(longTimer);
-      btn.removeEventListener("pointermove", onMove);
-      btn.removeEventListener("pointerup", onUp);
-      btn.removeEventListener("pointercancel", onUp);
+    onEnd: (e) => {
       ctx.root.classList.remove("is-dragging");
       ctx.el.iconLayer
         ?.querySelector('[data-icon-id="recycle-bin"]')
         ?.classList.remove("is-drop-target");
-      if (!moved) return;
-      if (!(hitRecycleBin(ctx, lastX, lastY) && moveToBin(ctx, iconId))) {
-        ctx.state.moved[iconId] = true;
-        ctx.persist();
+      if (hitRecycleBin(ctx, e.clientX, e.clientY) && moveToBin(ctx, iconId)) {
+        return;
       }
-    };
+      ctx.state.moved[iconId] = true;
+      ctx.persist();
+    },
 
-    // Captured events retarget to the button, so listen there rather than on
-    // window — and end the drag on pointercancel as well as pointerup.
-    btn.addEventListener("pointermove", onMove);
-    btn.addEventListener("pointerup", onUp);
-    btn.addEventListener("pointercancel", onUp);
+    /*
+     * A finger opens on one tap; a mouse selects and waits for a double-click.
+     * Requiring two taps inside a timeout was the single biggest reason taps
+     * appeared to do nothing — every phone OS opens on one.
+     */
+    onTap: (e) => {
+      select(e);
+      if (e.pointerType !== "mouse") ctx.openIcon(iconId);
+    },
+
+    onLongPress: (e) => {
+      select(e);
+      showIconMenu(ctx, e.clientX, e.clientY, iconId);
+    },
   });
-
-  /*
-   * Mouse keeps the desktop convention of double-click to open. Touch opens on
-   * a single tap: there is no hover to preview with, every phone OS opens on
-   * one tap, and requiring two taps inside a timeout on top of a slop test
-   * made opening anything a coin flip. Long-press still gives the menu.
-   *
-   * Open from both pointerup and click — browsers already classify a tap via
-   * click; pointerup covers devices that swallow the synthetic click after
-   * setPointerCapture. Guards keep mouse on double-click only.
-   */
-  const tryOpenTouch = () => {
-    if (lastPointerType !== "touch" || moved || longFired || opened) return;
-    opened = true;
-    ctx.openIcon(iconId);
-  };
 
   btn.addEventListener("dblclick", (e) => {
-    if (lastPointerType === "touch") return;
     e.preventDefault();
-    e.stopPropagation();
-    if (!moved) ctx.openIcon(iconId);
+    ctx.openIcon(iconId);
   });
 
-  btn.addEventListener("pointerup", tryOpenTouch);
-
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    tryOpenTouch();
-  });
+  // Keep a click on an icon from reaching the desktop, which would clear the
+  // selection the tap just made.
+  btn.addEventListener("click", (e) => e.stopPropagation());
 
   btn.addEventListener("contextmenu", (e) => {
+    if (e.pointerType === "touch" || e.pointerType === "pen") return;
     e.preventDefault();
     e.stopPropagation();
     showIconMenu(ctx, e.clientX, e.clientY, iconId);
@@ -371,27 +304,37 @@ export function wireMarquee(ctx: Ctx): void {
   const layer = ctx.el.iconLayer;
   if (!desk || !layer) return;
 
-  desk.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0) return;
-    if ((e.target as HTMLElement).closest(".desktop_icon, .window_wrap"))
-      return;
+  let box: HTMLElement | null = null;
+  let origin = { x: 0, y: 0 };
 
-    const box = document.createElement("div");
-    box.className = "desktop_marquee";
-    layer.appendChild(box);
-    const deskRect = desk.getBoundingClientRect();
-    const originX = e.clientX;
-    const originY = e.clientY;
-    let drew = false;
+  const clear = () => {
+    box?.remove();
+    box = null;
+  };
 
-    const onMove = (ev: PointerEvent) => {
-      drew = true;
-      const left = Math.min(originX, ev.clientX);
-      const top = Math.min(originY, ev.clientY);
-      const width = Math.abs(ev.clientX - originX);
-      const height = Math.abs(ev.clientY - originY);
-      box.style.left = `${left - deskRect.left}px`;
-      box.style.top = `${top - deskRect.top}px`;
+  onDrag(desk, {
+    // Leave icons and windows to their own handlers; taking the gesture here
+    // would steal the pointer capture out from under them.
+    shouldStart: (e) =>
+      !(e.target as HTMLElement).closest(".desktop_icon, .window_wrap"),
+
+    onStart: (e) => {
+      origin = { x: e.clientX, y: e.clientY };
+      box = document.createElement("div");
+      box.className = "desktop_marquee";
+      layer.appendChild(box);
+    },
+
+    onMove: (e) => {
+      if (!box) return;
+      const rect = desk.getBoundingClientRect();
+      const left = Math.min(origin.x, e.clientX);
+      const top = Math.min(origin.y, e.clientY);
+      const width = Math.abs(e.clientX - origin.x);
+      const height = Math.abs(e.clientY - origin.y);
+
+      box.style.left = `${left - rect.left}px`;
+      box.style.top = `${top - rect.top}px`;
       box.style.width = `${width}px`;
       box.style.height = `${height}px`;
 
@@ -406,17 +349,15 @@ export function wireMarquee(ctx: Ctx): void {
         if (inside && el.dataset.iconId) hits.push(el.dataset.iconId);
       });
       selectIcons(ctx, hits);
-    };
+    },
 
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      box.remove();
-      if (!drew) selectIcons(ctx, []);
-    };
+    // Runs on pointercancel too, so a cancelled marquee cannot strand its box.
+    onEnd: clear,
 
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    onTap: () => {
+      clear();
+      selectIcons(ctx, []);
+    },
   });
 }
 

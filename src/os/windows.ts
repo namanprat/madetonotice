@@ -3,6 +3,7 @@ import { APPS, appTitle } from "@/os/apps/registry.ts";
 import type { Menu } from "@/os/apps/types.ts";
 import type { Ctx, OpenOpts } from "@/os/context.ts";
 import { esc } from "@/os/context.ts";
+import { onDrag } from "@/os/drag.ts";
 import { clamp } from "@/os/layout.ts";
 import type { WindowState } from "@/os/persist.ts";
 
@@ -162,8 +163,6 @@ export function focusWindow(ctx: Ctx, id: string): void {
   }
 
   ctx.renderTaskbar();
-  const tip = MASCOT_CONTEXT[win.app];
-  if (tip) ctx.showMascot(tip);
 }
 
 export function closeWindow(ctx: Ctx, id: string): void {
@@ -212,6 +211,11 @@ export function openApp(ctx: Ctx, app: AppId, opts: OpenOpts = {}): void {
   ctx.windows.set(id, win);
   paintWindow(ctx, win);
   focusWindow(ctx, id);
+
+  // Tip on open, not on every focus — re-summoning it put the mascot on top of
+  // the window the user had just touched.
+  const tip = MASCOT_CONTEXT[app];
+  if (tip) ctx.showMascot(tip);
 }
 
 export function openIcon(ctx: Ctx, iconId: string): void {
@@ -277,37 +281,31 @@ function wireDrag(
     toggleMax();
   });
 
-  bar.addEventListener("pointerdown", (e) => {
-    if (win.maximized) return;
-    if ((e.target as HTMLElement).closest("[data-win]")) return;
+  let offset = { x: 0, y: 0 };
 
-    const offsetX = e.clientX - win.x;
-    const offsetY = e.clientY - win.y;
-    bar.setPointerCapture(e.pointerId);
-    ctx.root.classList.add("is-dragging");
+  onDrag(bar, {
+    shouldStart: (e) =>
+      !win.maximized && !(e.target as HTMLElement).closest("[data-win]"),
 
-    const onMove = (ev: PointerEvent) => {
+    onStart: (e) => {
+      offset = { x: e.clientX - win.x, y: e.clientY - win.y };
+      ctx.root.classList.add("is-dragging");
+    },
+
+    onMove: (e) => {
+      if (win.maximized) return;
       const host = ctx.el.windowHost?.getBoundingClientRect();
       // Clamp so a window can never be dragged past an edge and stranded.
       // A sliver of title bar must stay grabbable on every side.
       const maxX = (host?.width ?? window.innerWidth) - 64;
       const maxY = (host?.height ?? window.innerHeight) - 32;
-      win.x = clamp(ev.clientX - offsetX, 64 - win.w, maxX);
-      win.y = clamp(ev.clientY - offsetY, 0, maxY);
+      win.x = clamp(e.clientX - offset.x, 64 - win.w, maxX);
+      win.y = clamp(e.clientY - offset.y, 0, maxY);
       el.style.left = `${win.x}px`;
       el.style.top = `${win.y}px`;
-    };
+    },
 
-    const onUp = () => {
-      ctx.root.classList.remove("is-dragging");
-      bar.removeEventListener("pointermove", onMove);
-      bar.removeEventListener("pointerup", onUp);
-      bar.removeEventListener("pointercancel", onUp);
-    };
-
-    bar.addEventListener("pointermove", onMove);
-    bar.addEventListener("pointerup", onUp);
-    bar.addEventListener("pointercancel", onUp);
+    onEnd: () => ctx.root.classList.remove("is-dragging"),
   });
 }
 
@@ -318,19 +316,21 @@ function wireDrag(
 function wireResize(ctx: Ctx, el: HTMLElement, win: WindowState): void {
   el.querySelectorAll<HTMLElement>("[data-resize]").forEach((grip) => {
     const edge = grip.dataset.resize ?? "se";
+    let from = { x: 0, y: 0 };
+    let start = { x: 0, y: 0, w: 0, h: 0 };
 
-    grip.addEventListener("pointerdown", (e) => {
-      if (win.maximized) return;
-      e.stopPropagation();
-      grip.setPointerCapture(e.pointerId);
+    onDrag(grip, {
+      shouldStart: () => !win.maximized,
 
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const start = { x: win.x, y: win.y, w: win.w, h: win.h };
+      onStart: (e) => {
+        from = { x: e.clientX, y: e.clientY };
+        start = { x: win.x, y: win.y, w: win.w, h: win.h };
+      },
 
-      const onMove = (ev: PointerEvent) => {
-        const dx = ev.clientX - startX;
-        const dy = ev.clientY - startY;
+      onMove: (e) => {
+        if (win.maximized) return;
+        const dx = e.clientX - from.x;
+        const dy = e.clientY - from.y;
 
         if (edge.includes("e")) win.w = Math.max(MIN_W, start.w + dx);
         if (edge.includes("s")) win.h = Math.max(MIN_H, start.h + dy);
@@ -347,16 +347,9 @@ function wireResize(ctx: Ctx, el: HTMLElement, win: WindowState): void {
         el.style.top = `${win.y}px`;
         el.style.width = `${win.w}px`;
         el.style.height = `${win.h}px`;
-      };
+      },
 
-      const onUp = () => {
-        grip.removeEventListener("pointermove", onMove);
-        grip.removeEventListener("pointerup", onUp);
-        paintWindow(ctx, win);
-      };
-
-      grip.addEventListener("pointermove", onMove);
-      grip.addEventListener("pointerup", onUp);
+      onEnd: () => paintWindow(ctx, win),
     });
   });
 }
