@@ -20,7 +20,6 @@ export function folderKey(win: WindowState): string {
     case "recycle-bin":
     case "my-computer":
     case "projects":
-    case "resume":
       return win.app;
     default:
       return win.folderId ?? win.id;

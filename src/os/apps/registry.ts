@@ -27,7 +27,6 @@ export const APPS: Record<AppId, AppModule> = {
   minesweeper: minesweeperApp,
   settings: settingsApp,
   projects: folderApp,
-  resume: folderApp,
   "my-computer": folderApp,
   "recycle-bin": folderApp,
   folder: folderApp,
@@ -39,8 +38,6 @@ export function appTitle(app: AppId, folderId?: string): string {
       return "About Made to Notice";
     case "projects":
       return "Projects";
-    case "resume":
-      return "Resume";
     case "mail":
       return "Mail";
     case "ie":

@@ -107,7 +107,7 @@
       bottom: calc(var(--os-taskbar-height) - 0.125rem);
       z-index: 60;
       display: none;
-      grid-template-columns: 1.75rem 1fr;
+      grid-template-columns: 2rem 1fr;
       min-width: 11.875rem;
       background-color: var(--os-face-menu);
       border: 0.125rem solid #f5f2f2;
@@ -134,14 +134,15 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      gap: 0.3em;
+      gap: 0.2em;
       /* Inline axis is the vertical one here, so this is the top/bottom gap. */
-      padding-inline: 0.625rem;
+      padding-inline: 0.5rem;
       overflow: hidden;
       background-color: var(--os-sidebar);
       writing-mode: vertical-rl;
       transform: rotate(180deg);
-      font-size: 1.0625rem;
+      /* Sized so the glyphs fill ~2/3 of the gutter, as the original does. */
+      font-size: 1.375rem;
       line-height: 1;
       letter-spacing: 0.01em;
       color: var(--os-highlight);

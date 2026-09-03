@@ -3,7 +3,6 @@
 export type AppId =
   | "about"
   | "projects"
-  | "resume"
   | "mail"
   | "ie"
   | "paint"
@@ -98,13 +97,6 @@ export const DEFAULT_ICONS: OsIcon[] = [
     folderId: null,
   },
   {
-    id: "resume",
-    label: "Resume",
-    icon: "/os/icons/resume.png",
-    app: "resume",
-    folderId: null,
-  },
-  {
     id: "mail",
     label: "Mail",
     icon: "/os/icons/mail.png",
@@ -122,7 +114,7 @@ export const DEFAULT_ICONS: OsIcon[] = [
   {
     id: "paint",
     label: "Paint",
-    icon: "/os/icons/brush.png",
+    icon: "/os/icons/paint.png",
     app: "paint",
     folderId: null,
   },
@@ -242,15 +234,9 @@ export const START_ITEMS: {
     app: "projects",
     icon: "/os/icons/folder.png",
   },
-  {
-    id: "resume",
-    label: "Resume",
-    app: "resume",
-    icon: "/os/icons/resume.png",
-  },
   { id: "mail", label: "Mail", app: "mail", icon: "/os/icons/mail.png" },
   { id: "ie", label: "Internet", app: "ie", icon: "/os/icons/ie.png" },
-  { id: "paint", label: "Paint", app: "paint", icon: "/os/icons/brush.png" },
+  { id: "paint", label: "Paint", app: "paint", icon: "/os/icons/paint.png" },
   {
     id: "notepad",
     label: "Notepad",
