@@ -1,0 +1,403 @@
+---
+/** Taskbar, Start menu, task tabs and system tray. Driven by `src/os/taskbar.ts`. */
+---
+
+<div class="taskbar_wrap">
+  <button
+    type="button"
+    class="taskbar_start"
+    aria-expanded="false"
+    aria-label="Start"
+  >
+    <img
+      class="taskbar_start_img"
+      src="/os/icons/start.png"
+      alt=""
+      draggable="false"
+    />
+    <span class="taskbar_start_label">Start</span>
+  </button>
+
+  <div class="start_menu"></div>
+
+  <div class="taskbar_tabs" aria-label="Open windows"></div>
+
+  <div class="taskbar_tray">
+    <button
+      type="button"
+      class="taskbar_tray_btn"
+      data-icon-size-btn
+      aria-label="Icon size"
+    >
+      <img src="/os/icons/display.png" alt="" draggable="false" />
+    </button>
+    <img
+      class="taskbar_tray_icon"
+      src="/os/icons/speaker.png"
+      alt="Volume"
+      draggable="false"
+    />
+    <button type="button" class="taskbar_clock">00:00</button>
+    <div class="taskbar_calendar" hidden></div>
+  </div>
+</div>
+
+<style is:global>
+  @layer components {
+    /* ── Bar ───────────────────────────────────────────────────────────── */
+
+    .taskbar_wrap {
+      position: absolute;
+      inset: auto 0 0 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      height: var(--os-taskbar-height);
+      padding: 0 0.25rem 0 0.125rem;
+      background-color: var(--os-face-dark);
+      /* The double ridge: white highlight inside, black hairline outside. */
+      box-shadow:
+        inset 0 0.075rem #ffffffdd,
+        0 0.0625rem #000000;
+    }
+
+    /* ── Start button ──────────────────────────────────────────────────── */
+
+    .taskbar_start {
+      display: flex;
+      align-items: center;
+      gap: 0.125rem;
+      flex-shrink: 0;
+      height: 1.75rem;
+      padding: 0 0.375rem 0 0.25rem;
+      background-color: var(--os-face-dark);
+      border: 0.125rem solid #f5f2f2;
+      border-bottom-color: var(--os-shadow);
+      border-right-color: var(--os-shadow);
+      cursor: default;
+    }
+
+    .taskbar_start:active,
+    .taskbar_start.is-active {
+      background-color: rgb(255 255 255 / 0.49);
+      border-color: var(--os-shadow);
+      border-bottom-color: #f5f2f2;
+      border-right-color: #f5f2f2;
+      /* The inset dotted focus rectangle is the authentic pressed-Start cue. */
+      outline: var(--os-hair) dotted #000000;
+      outline-offset: -0.375rem;
+    }
+
+    .taskbar_start_img {
+      width: 1.375rem;
+      height: 1.375rem;
+    }
+
+    .taskbar_start_label {
+      font-size: var(--os-type-ui);
+      font-weight: 700;
+    }
+
+    /* ── Start menu ────────────────────────────────────────────────────── */
+
+    .start_menu {
+      position: absolute;
+      left: 0.125rem;
+      bottom: calc(var(--os-taskbar-height) - 0.125rem);
+      z-index: 60;
+      display: none;
+      grid-template-columns: 1.75rem 1fr;
+      min-width: 11.875rem;
+      background-color: var(--os-face-menu);
+      border: 0.125rem solid #f5f2f2;
+      border-top-width: 0.1875rem;
+      border-left-width: 0.1875rem;
+      border-bottom-color: var(--os-shadow);
+      border-right-color: var(--os-shadow);
+    }
+
+    .start_menu.is-active {
+      display: grid;
+    }
+
+    /*
+     * The vertical wordmark. Win95 uses a bitmap; ours is live text so it
+     * stays crisp at any size. Set the same way the original is: flat grey
+     * gutter, reading bottom-to-top, sitting at the bottom of the column,
+     * with the first half thin and the name bold.
+     *
+     * `vertical-rl` plus a 180° turn puts the inline axis bottom-to-top, so
+     * `justify-content: flex-start` is the visual bottom.
+     */
+    .start_sidebar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.3em;
+      /* Inline axis is the vertical one here, so this is the top/bottom gap. */
+      padding-inline: 0.625rem;
+      overflow: hidden;
+      background-color: var(--os-sidebar);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-size: 1.0625rem;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      color: var(--os-highlight);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .start_sidebar_thin {
+      font-weight: 400;
+    }
+
+    .start_sidebar_bold {
+      font-weight: 700;
+    }
+
+    .start_list {
+      display: flex;
+      flex-direction: column;
+      padding: 0.125rem 0;
+    }
+
+    .start_item {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      height: 2.5rem;
+      padding: 0 1rem 0 0.6rem;
+      background-color: transparent;
+      border: 0;
+      font-size: var(--os-type-ui);
+      color: inherit;
+      text-align: left;
+      cursor: default;
+    }
+
+    .start_item img {
+      width: 1.875rem;
+      height: 1.875rem;
+      flex-shrink: 0;
+    }
+
+    .start_divider {
+      margin: 0.25rem 0;
+      border-top: var(--os-divider);
+    }
+
+    .start_item:focus-visible {
+      outline: var(--os-hair) dotted currentColor;
+      outline-offset: -0.1875rem;
+    }
+
+    @media (hover: hover) {
+      .start_item:hover {
+        background-color: var(--os-menu-hover);
+        color: var(--os-title-text);
+      }
+    }
+
+    /* ── Task tabs ─────────────────────────────────────────────────────── */
+
+    .taskbar_tabs {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      touch-action: pan-x;
+    }
+
+    .taskbar_tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .taskbar_tab {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+      height: 1.625rem;
+      min-width: 2rem;
+      max-width: 11.25rem;
+      padding: 0 0.5rem;
+      background-color: var(--os-face-dark);
+      border: 0;
+      box-shadow: var(--os-bevel-btn);
+      font-size: var(--os-type-ui);
+      color: inherit;
+      cursor: default;
+    }
+
+    .taskbar_tab.is-active {
+      background-color: #dddcdc;
+      box-shadow: var(--os-bevel-btn-pressed);
+      /* 50% dither, the way a pressed Win95 tab is filled. */
+      background-image: repeating-conic-gradient(
+        rgb(255 255 255 / 0.55) 0% 25%,
+        transparent 0% 50%
+      );
+      background-size: 0.125rem 0.125rem;
+    }
+
+    .taskbar_tab_img {
+      width: 0.9375rem;
+      height: 0.9375rem;
+      flex-shrink: 0;
+    }
+
+    .taskbar_tab span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Tray ──────────────────────────────────────────────────────────── */
+
+    .taskbar_tray {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+      height: 1.75rem;
+      padding: 0 0.25rem;
+      box-shadow:
+        inset var(--os-hair) var(--os-hair) #000000,
+        var(--os-hair) var(--os-hair) #ffffffdd;
+    }
+
+    .taskbar_tray_btn {
+      display: grid;
+      place-items: center;
+      padding: 0;
+      background-color: transparent;
+      border: 0;
+      cursor: default;
+    }
+
+    .taskbar_tray_btn img,
+    .taskbar_tray_icon {
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+
+    .taskbar_clock {
+      padding: 0 0.25rem;
+      background-color: transparent;
+      border: 0;
+      font-size: var(--os-type-tiny);
+      letter-spacing: 0.04em;
+      color: var(--os-shadow);
+      white-space: nowrap;
+      cursor: default;
+    }
+
+    /* ── Calendar ──────────────────────────────────────────────────────── */
+
+    .taskbar_calendar {
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 0.375rem);
+      z-index: 60;
+      padding: 0.625rem;
+      background-color: var(--os-face);
+      border: 0.125rem solid var(--os-highlight);
+      border-bottom-color: #000000;
+      border-right-color: #000000;
+    }
+
+    .taskbar_calendar[hidden] {
+      display: none;
+    }
+
+    .calendar_nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.375rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .calendar_month {
+      font-size: var(--os-type-ui);
+      white-space: nowrap;
+    }
+
+    .calendar_nav .os_btn {
+      min-width: 1.5rem;
+      padding: 0.125rem 0.375rem;
+    }
+
+    .calendar_grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1.5rem);
+      text-align: center;
+      font-size: var(--os-type);
+    }
+
+    .calendar_weekday {
+      padding: 0.125rem 0;
+      font-weight: 700;
+    }
+
+    .calendar_day {
+      padding: 0.1875rem 0;
+      cursor: default;
+    }
+
+    .calendar_day.is-today {
+      background-color: var(--os-menu-hover);
+      color: var(--os-title-text);
+    }
+
+    @media (hover: hover) {
+      .calendar_day:hover {
+        background-color: rgb(0 0 0 / 0.1);
+      }
+    }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+
+    @media (width < 30rem) {
+      .taskbar_start_label {
+        display: none;
+      }
+
+      .taskbar_start {
+        padding: 0 0.25rem;
+      }
+
+      .taskbar_tray_icon {
+        display: none;
+      }
+
+      .taskbar_tab {
+        max-width: 7rem;
+      }
+
+      .start_menu {
+        min-width: min(15rem, calc(100vw - 1rem));
+      }
+
+      .calendar_grid {
+        grid-template-columns: repeat(7, 1.75rem);
+      }
+    }
+
+    @media (pointer: coarse) {
+      .taskbar_tab,
+      .taskbar_clock,
+      .taskbar_tray_btn {
+        min-height: 2.75rem;
+      }
+    }
+  }
+</style>

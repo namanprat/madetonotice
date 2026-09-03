@@ -1,0 +1,580 @@
+---
+/**
+ * Full-viewport Made to Notice desktop OS.
+ *
+ * This file owns the desktop surface, icons, texture overlay and the shared
+ * `os_btn` / `os_input` primitives. Window chrome, the taskbar and the program
+ * launcher each carry their own styles. The page carries none.
+ */
+import ContentOsApps from "@/components/os/ContentOsApps.astro";
+import ContentOsLauncher from "@/components/os/ContentOsLauncher.astro";
+import ContentOsTaskbar from "@/components/os/ContentOsTaskbar.astro";
+import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
+---
+
+<section class="desktop_wrap" data-os-root>
+  <div class="splash_wrap" aria-live="polite">
+    <div class="splash_inner">
+      <p class="splash_title">Made to Notice</p>
+      <p class="splash_text">Starting…</p>
+      <div class="splash_bar" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <div class="desktop_surface">
+    <div class="desktop_icons" aria-label="Desktop icons"></div>
+    <div class="desktop_windows" aria-live="polite"></div>
+    <div class="desktop_crt" aria-hidden="true"></div>
+  </div>
+
+  <ContentOsTaskbar />
+  <ContentOsLauncher />
+
+  <div class="context_wrap" hidden></div>
+  <div class="toast_host" aria-live="polite"></div>
+
+  <div class="clippy_wrap">
+    <div class="clippy_bubble">
+      <p class="clippy_text"></p>
+      <div class="clippy_actions">
+        <button type="button" class="os_btn clippy_next">Next tip</button>
+        <button type="button" class="os_btn clippy_close">Close</button>
+      </div>
+    </div>
+    <img
+      class="clippy_figure"
+      src="/os/icons/clippyani1.gif"
+      alt=""
+      draggable="false"
+    />
+  </div>
+
+  <ContentOsWindow />
+  <ContentOsApps />
+</section>
+
+<script>
+  import { bootDesktop } from "@/os/boot.ts";
+
+  document.querySelectorAll<HTMLElement>("[data-os-root]").forEach((root) => {
+    bootDesktop(root);
+  });
+</script>
+
+<style is:global>
+  @layer components {
+    /* ── Surface ───────────────────────────────────────────────────────── */
+
+    .desktop_wrap {
+      position: relative;
+      width: 100%;
+      height: 100svh;
+      overflow: clip;
+      background-color: var(--os-desktop);
+      color: var(--os-shadow);
+      font-family: var(--os-font);
+      font-size: var(--os-type);
+      line-height: 1.25;
+      user-select: none;
+      image-rendering: pixelated;
+      -webkit-font-smoothing: none;
+    }
+
+    .desktop_wrap *,
+    .desktop_wrap *::before,
+    .desktop_wrap *::after {
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .desktop_wrap img {
+      image-rendering: pixelated;
+      object-fit: contain;
+      height: auto;
+      max-width: none;
+    }
+
+    .desktop_surface {
+      position: absolute;
+      inset: 0 0 var(--os-taskbar-height) 0;
+      overflow: clip;
+      /*
+       * Scoped here rather than on <body>: the desktop itself should not
+       * pan or pinch, but window bodies and the launcher must still scroll,
+       * and they opt back in.
+       */
+      touch-action: none;
+    }
+
+    .desktop_icons {
+      position: absolute;
+      inset: 0;
+      padding: 0.5rem;
+    }
+
+    .desktop_windows {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* ── Texture ───────────────────────────────────────────────────────── */
+
+    .desktop_crt {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      pointer-events: none;
+    }
+
+    /*
+     * Grain from SVG turbulence rather than a bitmap. The reference project
+     * ships a 2.8MB JPEG for this; the only number that matters is the 4%
+     * opacity it is composited at.
+     */
+    .desktop_crt.has-grain::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 10rem 10rem;
+    }
+
+    .desktop_crt.has-scanlines::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.18;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        var(--os-shadow) 0 0.0625rem,
+        transparent 0.0625rem 0.1875rem
+      );
+    }
+
+    /* ── Splash ────────────────────────────────────────────────────────── */
+
+    .splash_wrap {
+      position: absolute;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--os-desktop);
+      color: var(--os-title-text);
+      transition: opacity 300ms linear;
+    }
+
+    .splash_wrap.is-done {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash_inner {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+      width: min(16rem, 80%);
+    }
+
+    .splash_title {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .splash_text {
+      margin: 0;
+      font-size: var(--os-type-tiny);
+      color: color-mix(in srgb, var(--os-title-text) 85%, transparent);
+    }
+
+    .splash_bar {
+      width: 100%;
+      height: 1.25rem;
+      padding: 0.125rem;
+      background-color: var(--os-face);
+      border: var(--os-hair) solid #000000;
+      border-right-color: var(--os-highlight);
+      border-bottom-color: var(--os-highlight);
+    }
+
+    .splash_bar::after {
+      content: "";
+      display: block;
+      height: 100%;
+      background-color: var(--os-title);
+      animation: splash-load 1s linear infinite;
+    }
+
+    @keyframes splash-load {
+      0% {
+        width: 10%;
+      }
+      50% {
+        width: 70%;
+      }
+      100% {
+        width: 100%;
+      }
+    }
+
+    /* ── Desktop icons ─────────────────────────────────────────────────── */
+
+    .desktop_icon {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      align-content: start;
+      gap: 0.25rem;
+      width: calc(var(--os-icon-size) + 1.875rem);
+      padding: 0.125rem;
+      background-color: transparent;
+      border: 0;
+      color: var(--os-title-text);
+      font-size: var(--os-type);
+      cursor: default;
+      -webkit-touch-callout: none;
+      touch-action: none;
+    }
+
+    .desktop_icon:active {
+      opacity: 0.7;
+    }
+
+    .desktop_icon_img {
+      width: var(--os-icon-size);
+      height: var(--os-icon-size);
+      pointer-events: none;
+    }
+
+    /*
+     * Selection is the icon tinted Win95 blue plus a highlighted label — no
+     * second sprite. The transparent dotted border on the resting state
+     * reserves the space so selecting an icon shifts nothing.
+     */
+    .desktop_icon.is-active .desktop_icon_img {
+      filter: brightness(8%) sepia(10) saturate(50) hue-rotate(200deg);
+    }
+
+    .desktop_icon_label {
+      margin: 0;
+      padding: 0.125rem 0.0625rem 0;
+      border: var(--os-hair) dotted transparent;
+      max-width: 100%;
+      line-height: 0.6875rem;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .desktop_icon.is-active .desktop_icon_label {
+      background-color: var(--os-select-icon);
+      border-color: var(--os-highlight);
+    }
+
+    .desktop_icon:focus-visible .desktop_icon_label {
+      border-color: var(--os-highlight);
+    }
+
+    .desktop_icon.is-drop-target {
+      outline: 0.125rem dotted var(--os-highlight);
+      background-color: color-mix(in srgb, var(--os-select) 40%, transparent);
+    }
+
+    .desktop_marquee {
+      position: absolute;
+      z-index: 30;
+      border: var(--os-hair) dotted var(--os-highlight);
+      background-color: rgb(255 255 255 / 0.1);
+      pointer-events: none;
+    }
+
+    /* ── Shared controls ───────────────────────────────────────────────── */
+
+    .os_btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      min-height: 1.375rem;
+      padding: 0.1875rem 0.625rem;
+      background-color: var(--os-face);
+      border: 0.125rem solid var(--os-highlight);
+      border-bottom-color: #000000;
+      border-right-color: #000000;
+      font-family: inherit;
+      font-size: var(--os-type);
+      color: var(--os-shadow);
+      text-decoration: none;
+      cursor: default;
+    }
+
+    .os_btn:active,
+    .os_btn.is-active {
+      border-color: #000000;
+      border-bottom-color: var(--os-highlight);
+      border-right-color: var(--os-highlight);
+    }
+
+    .os_btn:focus-visible {
+      outline: var(--os-hair) dotted currentColor;
+      outline-offset: -0.25rem;
+    }
+
+    .os_input {
+      min-height: 1.375rem;
+      padding: 0.1875rem 0.3125rem;
+      background-color: var(--os-highlight);
+      border: var(--os-hair) solid #151515;
+      border-right-color: var(--os-highlight);
+      border-bottom-color: var(--os-highlight);
+      outline: var(--os-hair) solid #797676;
+      outline-offset: 0;
+      font-family: inherit;
+      font-size: var(--os-type);
+      color: var(--os-shadow);
+    }
+
+    .os_input:focus {
+      outline-color: #797676;
+    }
+
+    /* ── Context menu ──────────────────────────────────────────────────── */
+
+    .context_wrap {
+      position: absolute;
+      z-index: 120;
+      display: none;
+      flex-direction: column;
+      min-width: 8.625rem;
+      padding: 0.25rem 0.125rem;
+      background-color: var(--os-face);
+      border: 0.125rem solid #eeeded;
+      border-right: var(--os-bevel-raised-edge);
+      border-bottom: var(--os-bevel-raised-edge);
+      outline: var(--os-hair) solid var(--os-highlight);
+    }
+
+    .context_wrap.is-active {
+      display: flex;
+    }
+
+    .context_wrap[hidden] {
+      display: none;
+    }
+
+    .context_item {
+      padding: 0.125rem 1.5rem;
+      background-color: transparent;
+      border: 0;
+      font-family: inherit;
+      font-size: var(--os-type);
+      color: inherit;
+      text-align: left;
+      white-space: nowrap;
+      cursor: default;
+    }
+
+    .context_item:disabled {
+      color: var(--os-shadow-soft);
+    }
+
+    .context_item:focus-visible {
+      outline: var(--os-hair) dotted currentColor;
+      outline-offset: -0.0625rem;
+    }
+
+    @media (hover: hover) {
+      .context_item:hover:not(:disabled) {
+        background-color: var(--os-menu-hover);
+        color: var(--os-title-text);
+      }
+    }
+
+    /* ── Toast ─────────────────────────────────────────────────────────── */
+
+    .toast_host {
+      position: absolute;
+      right: 0.75rem;
+      bottom: calc(var(--os-taskbar-height) + 0.75rem);
+      z-index: 130;
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+      pointer-events: none;
+    }
+
+    .toast_item {
+      padding: 0.375rem 0.625rem;
+      background-color: var(--os-face);
+      border: 0.125rem solid var(--os-highlight);
+      border-bottom-color: #000000;
+      border-right-color: #000000;
+      font-size: var(--os-type);
+    }
+
+    /* ── Clippy ────────────────────────────────────────────────────────── */
+
+    .clippy_wrap {
+      position: absolute;
+      right: 0.75rem;
+      bottom: calc(var(--os-taskbar-height) + 0.5rem);
+      z-index: 70;
+      width: 6.25rem;
+      display: none;
+    }
+
+    .clippy_wrap.is-active {
+      display: block;
+    }
+
+    .clippy_bubble {
+      position: absolute;
+      right: 0.5rem;
+      bottom: 100%;
+      width: 12rem;
+      margin-bottom: 0.875rem;
+      padding: 0.5rem;
+      background-color: var(--os-clippy);
+      border: var(--os-hair) solid #000000;
+      border-radius: 0.3125rem;
+    }
+
+    .clippy_bubble::after {
+      content: "";
+      position: absolute;
+      right: 1.75rem;
+      top: 100%;
+      border: 0.625rem solid transparent;
+      border-top-color: var(--os-clippy);
+      border-bottom-width: 0;
+      transform: scaleY(1.5);
+      transform-origin: top;
+    }
+
+    .clippy_text {
+      margin: 0 0 0.5rem;
+      font-size: var(--os-type);
+      overflow-wrap: break-word;
+    }
+
+    .clippy_actions {
+      display: flex;
+      gap: 0.375rem;
+    }
+
+    .clippy_figure {
+      width: 6.25rem;
+      height: auto;
+      image-rendering: auto;
+      pointer-events: none;
+    }
+
+    /* ── Win95 scrollbars ──────────────────────────────────────────────── */
+
+    .desktop_wrap * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--os-scroll-thumb) #e0e0e0;
+    }
+
+    .desktop_wrap *::-webkit-scrollbar {
+      width: 1.1875rem;
+      height: 1.1875rem;
+    }
+
+    .desktop_wrap *::-webkit-scrollbar-thumb {
+      background-color: var(--os-scroll-thumb);
+      border: 0.125rem solid var(--os-highlight);
+      border-right-color: var(--os-scroll-shadow);
+      border-bottom-color: var(--os-scroll-shadow);
+    }
+
+    /* 50% dither, the way a Win95 trough is filled. */
+    .desktop_wrap *::-webkit-scrollbar-track,
+    .desktop_wrap *::-webkit-scrollbar-corner {
+      background-color: #c0c0c0;
+      background-image: repeating-conic-gradient(
+        var(--os-highlight) 0% 25%,
+        transparent 0% 50%
+      );
+      background-size: 0.125rem 0.125rem;
+    }
+
+    /*
+     * Arrow buttons drawn as inline SVG triangles. The reference project
+     * scales 512x512 PNGs down to 10x8 for these.
+     */
+    .desktop_wrap *::-webkit-scrollbar-button {
+      width: 1.125rem;
+      height: 1.125rem;
+      background-color: #c0c0c0;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 0.625rem 0.5rem;
+      border: 0.125rem solid var(--os-highlight);
+      border-right-color: var(--os-scroll-shadow);
+      border-bottom-color: var(--os-scroll-shadow);
+      outline: var(--os-hair) solid var(--os-scroll-outline);
+      outline-offset: -0.0625rem;
+    }
+
+    .desktop_wrap *::-webkit-scrollbar-button:active {
+      border-left-color: var(--os-scroll-shadow);
+      border-top-color: var(--os-scroll-shadow);
+    }
+
+    .desktop_wrap *::-webkit-scrollbar-button:vertical:decrement {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M5 1 9 7H1z'/%3E%3C/svg%3E");
+    }
+
+    .desktop_wrap *::-webkit-scrollbar-button:vertical:increment {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3E%3Cpath d='M5 7 1 1h8z'/%3E%3C/svg%3E");
+    }
+
+    .desktop_wrap *::-webkit-scrollbar-button:horizontal:decrement {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 10'%3E%3Cpath d='M1 5 7 1v8z'/%3E%3C/svg%3E");
+    }
+
+    .desktop_wrap *::-webkit-scrollbar-button:horizontal:increment {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 10'%3E%3Cpath d='M7 5 1 9V1z'/%3E%3C/svg%3E");
+    }
+
+    /* The double-arrow slots Chromium reserves at each end must stay empty. */
+    .desktop_wrap *::-webkit-scrollbar-button:vertical:start:increment,
+    .desktop_wrap *::-webkit-scrollbar-button:vertical:end:decrement,
+    .desktop_wrap *::-webkit-scrollbar-button:horizontal:start:increment,
+    .desktop_wrap *::-webkit-scrollbar-button:horizontal:end:decrement {
+      display: none;
+    }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+
+    @media (width < 30rem) {
+      .clippy_wrap {
+        width: 4.5rem;
+      }
+
+      .clippy_figure {
+        width: 4.5rem;
+      }
+
+      .clippy_bubble {
+        width: min(15rem, calc(100vw - 2rem));
+      }
+
+      .toast_host {
+        left: 0.75rem;
+        right: 0.75rem;
+      }
+    }
+
+    @media (pointer: coarse) {
+      .context_item {
+        padding-block: 0.5rem;
+      }
+    }
+  }
+</style>

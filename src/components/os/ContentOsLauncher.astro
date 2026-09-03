@@ -1,0 +1,176 @@
+---
+/**
+ * Full-screen searchable program grid, opened from Start.
+ *
+ * The reference project launches this from the Start menu rather than at a
+ * breakpoint, so it stays available at every width — which is what makes it
+ * the practical way to reach an app on a phone while the desktop stays a
+ * desktop. Contents are drawn by `openLauncher()` in `src/os/taskbar.ts`.
+ */
+---
+
+<div class="launcher_wrap" hidden></div>
+
+<style is:global>
+  @layer components {
+    .launcher_wrap {
+      position: absolute;
+      inset: 0 0 var(--os-taskbar-height) 0;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      background-color: rgb(46 37 24 / 0.19);
+      backdrop-filter: blur(3rem);
+      -webkit-backdrop-filter: blur(3rem);
+    }
+
+    .launcher_wrap[hidden] {
+      display: none;
+    }
+
+    .launcher_toolbar {
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0.875rem 1.25rem 0.625rem;
+    }
+
+    .launcher_search {
+      display: flex;
+      align-items: center;
+      width: 16.25rem;
+      max-width: 100%;
+      height: 1.75rem;
+      padding: 0 0.5rem;
+      background-color: rgb(255 255 255 / 0.07);
+      border: var(--os-hair) solid rgb(255 255 255 / 0.14);
+    }
+
+    .launcher_search:focus-within {
+      background-color: rgb(255 255 255 / 0.11);
+      border-color: rgb(255 255 255 / 0.28);
+    }
+
+    .launcher_input {
+      flex: 1;
+      min-width: 0;
+      padding: 0;
+      background-color: transparent;
+      border: 0;
+      outline: 0;
+      font-family: inherit;
+      font-size: var(--os-type);
+      color: rgb(255 255 255 / 0.97);
+    }
+
+    .launcher_input::placeholder {
+      color: rgb(238 234 234 / 0.63);
+    }
+
+    .launcher_body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      /* Restores touch scrolling that the desktop surface opts out of. */
+      touch-action: pan-y;
+      background-color: rgb(255 255 255 / 0.07);
+      background-image: radial-gradient(
+        circle,
+        rgb(255 255 255 / 0.04) 0.0625rem,
+        transparent 0.0625rem
+      );
+      background-size: 1.5rem 1.5rem;
+    }
+
+    .launcher_grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 7.5rem);
+      grid-auto-rows: 6.25rem;
+      justify-content: center;
+      gap: 0.5rem;
+      max-width: 62.5rem;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    .launcher_item {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 0.375rem;
+      padding: 0.5rem 0.25rem;
+      background-color: transparent;
+      border: var(--os-hair) dotted transparent;
+      font-family: inherit;
+      font-size: var(--os-type);
+      color: rgb(255 255 255 / 0.97);
+      text-align: center;
+      cursor: default;
+    }
+
+    .launcher_item img {
+      width: 3.25rem;
+      height: 3.25rem;
+    }
+
+    .launcher_item span {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      line-height: 1.1;
+    }
+
+    .launcher_item:focus-visible {
+      outline: var(--os-hair) dotted var(--os-highlight);
+    }
+
+    @media (hover: hover) {
+      .launcher_item:hover {
+        background-color: rgb(255 255 255 / 0.11);
+        border-color: rgb(255 255 255 / 0.4);
+      }
+    }
+
+    .launcher_empty {
+      display: grid;
+      place-items: center;
+      gap: 0.25rem;
+      padding: 3rem 1rem;
+      color: rgb(255 255 255 / 0.85);
+      text-align: center;
+    }
+
+    .launcher_empty p {
+      margin: 0;
+    }
+
+    .launcher_status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-shrink: 0;
+      padding: 0.5rem 1.25rem;
+      background-color: rgb(255 255 255 / 0.07);
+      font-size: var(--os-type-tiny);
+      color: rgb(255 255 255 / 0.9);
+    }
+
+    @media (width < 40rem) {
+      .launcher_grid {
+        grid-template-columns: repeat(auto-fill, 5.75rem);
+        grid-auto-rows: 5.5rem;
+        gap: 0.375rem;
+        padding: 0.75rem 1rem;
+      }
+
+      .launcher_item img {
+        width: 2.75rem;
+        height: 2.75rem;
+      }
+
+      .launcher_search {
+        width: 12.5rem;
+      }
+    }
+  }
+</style>

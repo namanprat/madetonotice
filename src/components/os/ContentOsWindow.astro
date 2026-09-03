@@ -1,0 +1,452 @@
+---
+/**
+ * The one window frame every app is drawn into, plus the modal dialog that
+ * replaces `window.prompt` / `window.confirm`.
+ *
+ * Cloned per window by `src/os/windows.ts`. The reference project duplicates
+ * this frame once per app with a suffixed class name; there is only one here.
+ */
+---
+
+<template id="os-window-template">
+  <div class="window_wrap">
+    <div class="window_titlebar">
+      <img
+        class="window_icon"
+        src="/os/icons/file1.png"
+        alt=""
+        draggable="false"
+        data-win-icon
+      />
+      <span class="window_title"></span>
+      <div class="window_controls">
+        <button type="button" class="window_ctrl" data-win="min" aria-label="Minimize">
+          <span class="window_glyph min"></span>
+        </button>
+        <button type="button" class="window_ctrl" data-win="max" aria-label="Maximize">
+          <span class="window_glyph max"></span>
+        </button>
+        <button type="button" class="window_ctrl" data-win="close" aria-label="Close">
+          <span class="window_glyph close"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="window_menubar" hidden></div>
+    <div class="window_body"></div>
+    <div class="window_statusbar" hidden>
+      <span class="window_status_main"></span>
+      <span class="window_status_side"></span>
+    </div>
+
+    <span class="window_grip" data-resize="n" aria-hidden="true"></span>
+    <span class="window_grip" data-resize="s" aria-hidden="true"></span>
+    <span class="window_grip" data-resize="e" aria-hidden="true"></span>
+    <span class="window_grip" data-resize="w" aria-hidden="true"></span>
+    <span class="window_grip" data-resize="se" aria-hidden="true"></span>
+    <span class="window_grip" data-resize="sw" aria-hidden="true"></span>
+  </div>
+</template>
+
+<style is:global>
+  @layer components {
+    /* ── Frame ─────────────────────────────────────────────────────────── */
+
+    .window_wrap {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      min-width: 15rem;
+      min-height: 10rem;
+      padding-bottom: 0.25rem;
+      background-color: var(--os-face);
+      border: var(--os-bevel-raised-border);
+      border-right: var(--os-bevel-raised-edge);
+      border-bottom: var(--os-bevel-raised-edge);
+      outline: var(--os-hair) solid var(--os-highlight);
+      pointer-events: auto;
+      overflow: hidden;
+    }
+
+    .window_wrap.is-minimized {
+      display: none;
+    }
+
+    .window_wrap.is-maximized {
+      inset: 0 !important;
+      width: auto !important;
+      height: auto !important;
+    }
+
+    .window_wrap.is-maximized .window_grip {
+      display: none;
+    }
+
+    /* ── Title bar ─────────────────────────────────────────────────────── */
+
+    .window_titlebar {
+      display: flex;
+      align-items: center;
+      gap: 0.3125rem;
+      flex-shrink: 0;
+      height: 1.5rem;
+      margin: 0.125rem 0.125rem 0.0625rem;
+      padding: 0 0.125rem 0 0.3125rem;
+      background-color: var(--os-title-inactive);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .window_wrap.is-active .window_titlebar {
+      background-color: var(--os-title);
+    }
+
+    .window_icon {
+      width: 1rem;
+      height: 1rem;
+      flex-shrink: 0;
+    }
+
+    .window_title {
+      flex: 1;
+      min-width: 0;
+      font-size: var(--os-type-title);
+      font-weight: 700;
+      color: color-mix(in srgb, var(--os-title-text) 75%, transparent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .window_wrap.is-active .window_title {
+      color: var(--os-title-text);
+    }
+
+    /* ── Controls ──────────────────────────────────────────────────────── */
+
+    .window_controls {
+      display: flex;
+      gap: 0.125rem;
+      flex-shrink: 0;
+    }
+
+    .window_ctrl {
+      display: grid;
+      place-items: center;
+      width: 1.0625rem;
+      height: 1.0625rem;
+      padding: 0;
+      background-color: var(--os-face-btn);
+      border: var(--os-hair) solid #000000;
+      border-top-color: #c6c6c6;
+      border-left-color: #c6c6c6;
+      box-shadow: var(--os-bevel-btn);
+      color: #000000;
+      cursor: default;
+    }
+
+    .window_ctrl:active {
+      border-top-color: #000000;
+      border-left-color: #000000;
+      border-bottom-color: var(--os-highlight);
+      border-right-color: var(--os-highlight);
+      box-shadow: none;
+    }
+
+    /*
+     * Glyphs are drawn, not typed. The reference project sets a `×` character
+     * and then needs three browser-specific hacks to centre it; borders land
+     * on the same pixel everywhere.
+     */
+    .window_glyph {
+      position: relative;
+      display: block;
+      pointer-events: none;
+    }
+
+    .window_glyph.min {
+      width: 0.5rem;
+      height: 0.125rem;
+      margin-top: 0.375rem;
+      background-color: currentColor;
+    }
+
+    .window_glyph.max {
+      width: 0.625rem;
+      height: 0.5625rem;
+      border: var(--os-hair) solid currentColor;
+      border-top-width: 0.125rem;
+    }
+
+    /* Restore: the small front box, with the offset back box behind it. */
+    .window_glyph.max.restore {
+      width: 0.5rem;
+      height: 0.4375rem;
+      margin: 0.125rem -0.125rem -0.125rem 0.125rem;
+    }
+
+    .window_glyph.max.restore::before {
+      content: "";
+      position: absolute;
+      right: -0.0625rem;
+      bottom: 0.25rem;
+      width: 0.5rem;
+      height: 0.4375rem;
+      border: var(--os-hair) solid currentColor;
+      border-top-width: 0.125rem;
+      background-color: var(--os-face-btn);
+    }
+
+    .window_glyph.close {
+      width: 0.5rem;
+      height: 0.5rem;
+    }
+
+    .window_glyph.close::before,
+    .window_glyph.close::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 0.125rem;
+      background-color: currentColor;
+    }
+
+    .window_glyph.close::before {
+      transform: translateY(-50%) rotate(45deg);
+    }
+
+    .window_glyph.close::after {
+      transform: translateY(-50%) rotate(-45deg);
+    }
+
+    /* ── Menu bar ──────────────────────────────────────────────────────── */
+
+    .window_menubar {
+      display: flex;
+      gap: 0.3125rem;
+      flex-shrink: 0;
+      padding: 0.0625rem 0.625rem;
+    }
+
+    .window_menubar[hidden] {
+      display: none;
+    }
+
+    .window_menu {
+      padding: 0.0625rem 0.25rem;
+      background-color: transparent;
+      border: 0;
+      font-size: var(--os-type-title);
+      color: inherit;
+      cursor: default;
+    }
+
+    .window_menu u {
+      text-underline-offset: 0.0625rem;
+    }
+
+    .window_menu:focus-visible {
+      outline: var(--os-hair) dotted currentColor;
+      outline-offset: -0.0625rem;
+    }
+
+    /* ── Body ──────────────────────────────────────────────────────────── */
+
+    .window_body {
+      flex: 1;
+      min-height: 0;
+      width: calc(100% - 0.375rem);
+      margin: 0.125rem auto 0;
+      background-color: var(--os-highlight);
+      border: var(--os-hair) solid #000000;
+      border-right-color: var(--os-highlight);
+      border-bottom-color: var(--os-highlight);
+      overflow: auto;
+      /* Restores touch scrolling that the desktop surface opts out of. */
+      touch-action: pan-x pan-y;
+    }
+
+    /* ── Status bar ────────────────────────────────────────────────────── */
+
+    .window_statusbar {
+      display: flex;
+      gap: 0.3125rem;
+      flex-shrink: 0;
+      width: calc(100% - 0.375rem);
+      margin: 0.25rem auto 0;
+      font-size: var(--os-type-bar);
+      cursor: default;
+    }
+
+    .window_statusbar[hidden] {
+      display: none;
+    }
+
+    .window_status_main,
+    .window_status_side {
+      padding: 0.125rem 0.25rem;
+      border: var(--os-hair) solid #000000;
+      border-right-color: var(--os-highlight);
+      border-bottom-color: var(--os-highlight);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .window_status_main {
+      flex: 1 1 70%;
+    }
+
+    .window_status_side {
+      flex: 0 1 30%;
+    }
+
+    /* ── Resize grips ──────────────────────────────────────────────────── */
+
+    .window_grip {
+      position: absolute;
+      touch-action: none;
+    }
+
+    .window_grip[data-resize="n"],
+    .window_grip[data-resize="s"] {
+      left: 0.25rem;
+      right: 0.25rem;
+      height: 0.25rem;
+      cursor: ns-resize;
+    }
+
+    .window_grip[data-resize="n"] {
+      top: 0;
+    }
+    .window_grip[data-resize="s"] {
+      bottom: 0;
+    }
+
+    .window_grip[data-resize="e"],
+    .window_grip[data-resize="w"] {
+      top: 0.25rem;
+      bottom: 0.25rem;
+      width: 0.25rem;
+      cursor: ew-resize;
+    }
+
+    .window_grip[data-resize="e"] {
+      right: 0;
+    }
+    .window_grip[data-resize="w"] {
+      left: 0;
+    }
+
+    .window_grip[data-resize="se"],
+    .window_grip[data-resize="sw"] {
+      bottom: 0;
+      width: 0.5rem;
+      height: 0.5rem;
+    }
+
+    .window_grip[data-resize="se"] {
+      right: 0;
+      cursor: nwse-resize;
+    }
+    .window_grip[data-resize="sw"] {
+      left: 0;
+      cursor: nesw-resize;
+    }
+
+    /* ── Dialog ────────────────────────────────────────────────────────── */
+
+    .dialog_wrap {
+      position: absolute;
+      inset: 0;
+      z-index: 200;
+      display: grid;
+      place-items: center;
+      background-color: transparent;
+    }
+
+    .dialog_frame {
+      min-width: 17rem;
+      max-width: min(24rem, calc(100% - 2rem));
+      padding-bottom: 0.625rem;
+      background-color: var(--os-face);
+      border: var(--os-bevel-raised-border);
+      border-right: var(--os-bevel-raised-edge);
+      border-bottom: var(--os-bevel-raised-edge);
+      outline: var(--os-hair) solid var(--os-highlight);
+      box-shadow: 0.5rem 0.5rem 0.5rem rgb(0 0 0 / 0.15);
+    }
+
+    .dialog_titlebar {
+      display: flex;
+      align-items: center;
+      height: 1.5rem;
+      margin: 0.125rem 0.125rem 0.5rem;
+      padding: 0 0.125rem 0 0.3125rem;
+      background-color: var(--os-title);
+    }
+
+    .dialog_title {
+      flex: 1;
+      font-size: var(--os-type-title);
+      font-weight: 700;
+      color: var(--os-title-text);
+    }
+
+    .dialog_body {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 0 1rem 0.75rem;
+    }
+
+    .dialog_icon {
+      width: 2rem;
+      height: 2rem;
+      flex-shrink: 0;
+    }
+
+    .dialog_content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dialog_message {
+      margin: 0 0 0.5rem;
+      font-size: var(--os-type);
+    }
+
+    .dialog_field {
+      width: 100%;
+    }
+
+    .dialog_actions {
+      display: flex;
+      gap: 0.375rem;
+      justify-content: center;
+    }
+
+    .dialog_actions .os_btn {
+      min-width: 4.375rem;
+    }
+
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+
+    @media (width < 30rem) {
+      .window_titlebar {
+        height: 1.75rem;
+      }
+
+      .window_ctrl {
+        width: 1.375rem;
+        height: 1.375rem;
+      }
+
+      .window_menu {
+        padding: 0.25rem 0.375rem;
+      }
+    }
+  }
+</style>

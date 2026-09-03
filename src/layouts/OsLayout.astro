@@ -1,0 +1,71 @@
+---
+import "@/styles/global.css";
+import BaseHead from "@/components/Utility/BaseHead.astro";
+import type { SeoProps } from "@/types.ts";
+
+type Props = SeoProps & {
+  /** Theme for the whole page. `inherit` leaves the root defaults in place. */
+  theme?: "inherit" | "light" | "dark" | "brand";
+};
+
+const { theme = "light", ...seo } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class:list={[theme !== "inherit" && `theme-${theme}`]}>
+  <head>
+    <BaseHead {...seo} />
+    <slot name="head" />
+    <style is:inline>
+      @font-face {
+        font-family: "win95";
+        src: url("/os/win95.ttf") format("truetype");
+        font-weight: 400;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "win95";
+        src: url("/os/MS%20Sans%20Serif%208pt%20bold.ttf") format("truetype");
+        font-weight: 700;
+        font-style: normal;
+        font-display: block;
+      }
+      /* Seven-segment face for the Minesweeper counters. */
+      @font-face {
+        font-family: "Digital Dismay";
+        src: url("/os/Digital%20Dismay.otf") format("opentype");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
+  </head>
+  <body class="os-body">
+    <main id="main" class="os-main" tabindex="-1">
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  @layer components {
+    .os-body {
+      margin: 0;
+      min-height: 100svh;
+      overflow: clip;
+      background-color: var(--os-desktop);
+      color: var(--os-shadow);
+      font-family: var(--os-font);
+      font-size: var(--os-type);
+      line-height: 1.25;
+      image-rendering: pixelated;
+      -webkit-font-smoothing: none;
+    }
+
+    .os-main {
+      min-height: 100svh;
+      outline: none;
+    }
+  }
+</style>
