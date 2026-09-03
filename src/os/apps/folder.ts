@@ -61,12 +61,22 @@ export const folderApp: AppModule = {
            </div>`
         : "";
 
-    const body =
-      children.length === 0
-        ? `<p class="folder_empty">This folder is empty.</p>`
-        : `<ul class="folder_list">${children.map(itemHtml).join("")}</ul>`;
+    // The bin gets bulk actions of its own; reaching them through the File
+    // menu alone is too well hidden for the one folder people expect to empty.
+    const empty = children.length === 0;
+    const bin =
+      win.app === "recycle-bin"
+        ? `<div class="folder_actions">
+             <button type="button" class="os_btn" data-bin="restore"${empty ? " disabled" : ""}>Restore All</button>
+             <button type="button" class="os_btn" data-bin="empty"${empty ? " disabled" : ""}>Delete All</button>
+           </div>`
+        : "";
 
-    return `${drive}<div class="folder_view">${body}</div>`;
+    const body = empty
+      ? `<p class="folder_empty">This folder is empty.</p>`
+      : `<ul class="folder_list">${children.map(itemHtml).join("")}</ul>`;
+
+    return `${drive}${bin}<div class="folder_view">${body}</div>`;
   },
 
   menus(ctx, _el, win) {
@@ -76,12 +86,14 @@ export const folderApp: AppModule = {
             {
               label: "Restore All",
               action: () => restoreFromBin(ctx),
+              disabled: folderChildren(ctx, win).length === 0,
             },
             {
-              label: "Empty Recycle Bin",
+              label: "Delete All",
               action: () => {
                 void emptyBin(ctx);
               },
+              disabled: folderChildren(ctx, win).length === 0,
             },
           ]
         : [
@@ -105,14 +117,14 @@ export const folderApp: AppModule = {
       {
         label: "View",
         key: 0,
-        items: [
-          { label: "Refresh", action: () => ctx.refreshOpenFolders() },
-        ],
+        items: [{ label: "Refresh", action: () => ctx.refreshOpenFolders() }],
       },
       {
         label: "Help",
         key: 0,
-        items: [{ label: "About Made to Notice", action: () => ctx.openApp("about") }],
+        items: [
+          { label: "About Made to Notice", action: () => ctx.openApp("about") },
+        ],
       },
     ];
   },
@@ -123,34 +135,43 @@ export const folderApp: AppModule = {
   },
 
   wire(ctx, el) {
-    el.querySelectorAll<HTMLButtonElement>("[data-open-icon]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.openIcon;
-        if (!id) return;
+    el.querySelectorAll<HTMLButtonElement>("[data-open-icon]").forEach(
+      (btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.openIcon;
+          if (!id) return;
 
-        if (id === "disk-c") {
-          ctx.openApp("folder", {
-            folderId: "disk-c",
-            title: "Disk (C:)",
-            icon: "/os/icons/c.png",
-          });
-          return;
-        }
+          if (id === "disk-c") {
+            ctx.openApp("folder", {
+              folderId: "disk-c",
+              title: "Disk (C:)",
+              icon: "/os/icons/c.png",
+            });
+            return;
+          }
 
-        // Inside the bin, a click restores rather than opens.
-        const child = ctx.state.icons.find((i) => i.id === id);
-        if (child?.folderId === "recycle-bin") {
-          child.folderId = null;
-          delete ctx.state.moved[id];
-          ctx.persist();
-          ctx.renderIcons();
-          ctx.refreshOpenFolders();
-          ctx.toast(`${child.label} restored`);
-          return;
-        }
+          // Inside the bin, a click restores rather than opens.
+          const child = ctx.state.icons.find((i) => i.id === id);
+          if (child?.folderId === "recycle-bin") {
+            child.folderId = null;
+            delete ctx.state.moved[id];
+            ctx.persist();
+            ctx.renderIcons();
+            ctx.refreshOpenFolders();
+            ctx.toast(`${child.label} restored`);
+            return;
+          }
 
-        ctx.openIcon(id);
-      });
+          ctx.openIcon(id);
+        });
+      },
+    );
+
+    el.querySelector('[data-bin="restore"]')?.addEventListener("click", () =>
+      restoreFromBin(ctx),
+    );
+    el.querySelector('[data-bin="empty"]')?.addEventListener("click", () => {
+      void emptyBin(ctx);
     });
   },
 };

@@ -186,12 +186,12 @@ export function bootDesktop(root: HTMLElement): void {
     { label: "Programs…", action: () => openLauncher(ctx) },
     { label: "Properties", action: () => ctx.openApp("settings") },
     {
-      label: "Empty Recycle Bin",
+      label: "Delete All in Recycle Bin",
       action: () => {
         void emptyBin(ctx);
       },
     },
-    { label: "Restore Recycle Bin", action: () => restoreFromBin(ctx) },
+    { label: "Restore All from Recycle Bin", action: () => restoreFromBin(ctx) },
   ];
 
   ctx.el.desk?.addEventListener("click", (e) => {

@@ -21,6 +21,7 @@ export type OsIcon = {
   app: AppId;
   /** Desktop only when folderId is null. */
   folderId: string | null;
+  /** Cannot be renamed, deleted, or dragged to the Recycle Bin. */
   protected?: boolean;
   url?: string;
 };
@@ -88,6 +89,7 @@ export const DEFAULT_ICONS: OsIcon[] = [
     icon: "/os/icons/bio_pc.png",
     app: "about",
     folderId: null,
+    protected: true,
   },
   {
     id: "projects",
@@ -95,6 +97,7 @@ export const DEFAULT_ICONS: OsIcon[] = [
     icon: "/os/icons/folder.png",
     app: "projects",
     folderId: null,
+    protected: true,
   },
   {
     id: "mail",
@@ -102,6 +105,7 @@ export const DEFAULT_ICONS: OsIcon[] = [
     icon: "/os/icons/mail.png",
     app: "mail",
     folderId: null,
+    protected: true,
   },
   {
     id: "ie",
@@ -110,6 +114,7 @@ export const DEFAULT_ICONS: OsIcon[] = [
     app: "ie",
     folderId: null,
     url: IE_HOME,
+    protected: true,
   },
   {
     id: "paint",
@@ -138,6 +143,7 @@ export const DEFAULT_ICONS: OsIcon[] = [
     icon: "/os/icons/display.png",
     app: "settings",
     folderId: null,
+    protected: true,
   },
 
   // Inside Projects

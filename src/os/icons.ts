@@ -2,7 +2,12 @@ import type { OsIcon } from "@/content/os.ts";
 import type { Ctx } from "@/os/context.ts";
 import { esc } from "@/os/context.ts";
 import { confirmBox, promptBox } from "@/os/dialog.ts";
-import { packIcons, snapToSurface, type Cell, type Surface } from "@/os/layout.ts";
+import {
+  packIcons,
+  snapToSurface,
+  type Cell,
+  type Surface,
+} from "@/os/layout.ts";
 
 const LONG_MS = 800;
 const DOUBLE_MS = 500;
@@ -113,7 +118,12 @@ export function selectIcons(ctx: Ctx, ids: string[]): void {
 
 export function moveToBin(ctx: Ctx, iconId: string): boolean {
   const icon = ctx.state.icons.find((i) => i.id === iconId);
-  if (!icon || icon.protected || icon.id === "recycle-bin") return false;
+  if (!icon) return false;
+  if (icon.protected) {
+    // Say why, rather than letting the icon spring back with no explanation.
+    ctx.toast(`${icon.label} is a system item and cannot be deleted`);
+    return false;
+  }
   icon.folderId = "recycle-bin";
   delete ctx.state.positions[iconId];
   delete ctx.state.moved[iconId];
@@ -221,7 +231,10 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
     const deskRect = ctx.el.desk?.getBoundingClientRect();
 
     if (!ctx.selected.has(iconId)) {
-      selectIcons(ctx, e.ctrlKey || e.metaKey ? [...ctx.selected, iconId] : [iconId]);
+      selectIcons(
+        ctx,
+        e.ctrlKey || e.metaKey ? [...ctx.selected, iconId] : [iconId],
+      );
     }
 
     if (e.pointerType === "touch") {
@@ -250,9 +263,14 @@ function wireIcon(ctx: Ctx, btn: HTMLElement, iconId: string): void {
       ctx.state.positions[iconId] = pos;
       btn.style.left = `${pos.x}rem`;
       btn.style.top = `${pos.y}rem`;
+      // Only light the bin up for something it will actually accept.
+      const icon = ctx.state.icons.find((i) => i.id === iconId);
       ctx.el.iconLayer
         ?.querySelector('[data-icon-id="recycle-bin"]')
-        ?.classList.toggle("is-drop-target", hitRecycleBin(ctx, ev.clientX, ev.clientY));
+        ?.classList.toggle(
+          "is-drop-target",
+          !icon?.protected && hitRecycleBin(ctx, ev.clientX, ev.clientY),
+        );
     };
 
     const onUp = () => {
@@ -313,7 +331,8 @@ export function wireMarquee(ctx: Ctx): void {
 
   desk.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
-    if ((e.target as HTMLElement).closest(".desktop_icon, .window_wrap")) return;
+    if ((e.target as HTMLElement).closest(".desktop_icon, .window_wrap"))
+      return;
 
     const box = document.createElement("div");
     box.className = "desktop_marquee";
