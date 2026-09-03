@@ -130,7 +130,12 @@ export const SAVERS: { id: SaverId; label: string }[] = [
   { id: "stars", label: "Flying Notices" },
 ];
 
-export const SAVER_DELAYS = [15, 30, 60, 300];
+/**
+ * Idle seconds before the screensaver takes over. Nothing under a minute:
+ * on a phone, a minute of reading is normal use, not idleness. Use Preview in
+ * Settings to see a saver without waiting.
+ */
+export const SAVER_DELAYS = [60, 300, 600, 1800];
 
 export const TEXTURES: { id: TextureId; label: string }[] = [
   { id: "none", label: "(None)" },

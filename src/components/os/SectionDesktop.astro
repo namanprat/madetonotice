@@ -682,28 +682,74 @@ import ContentOsWindow from "@/components/os/ContentOsWindow.astro";
       touch-action: none;
     }
 
+    /*
+     * Touch sizing. Kept in one block rather than split across the component
+     * files, because it is a single cross-cutting rule: nothing interactive
+     * should be smaller than a fingertip. 2.75rem is the 44px minimum.
+     */
     @media (pointer: coarse) {
-      .context_item {
-        padding-block: 0.5rem;
+      .window_titlebar {
+        height: 3rem;
       }
 
-      /* Lift the smallest hit targets toward a fingertip. */
       .window_ctrl {
-        width: 1.625rem;
-        height: 1.625rem;
+        width: 2.5rem;
+        height: 2.5rem;
       }
 
-      .window_menu {
-        padding: 0.375rem 0.5rem;
+      .window_glyph.min {
+        width: 0.875rem;
+        margin-top: 0.625rem;
       }
 
-      .os_btn {
-        min-height: 2rem;
+      .window_glyph.max {
+        width: 1rem;
+        height: 0.875rem;
+      }
+
+      /* The restore glyph is two offset boxes; scale both, not just the front. */
+      .window_glyph.max.restore {
+        width: 0.8125rem;
+        height: 0.6875rem;
+        margin: 0.1875rem -0.1875rem -0.1875rem 0.1875rem;
+      }
+
+      .window_glyph.max.restore::before {
+        width: 0.8125rem;
+        height: 0.6875rem;
+        right: -0.0625rem;
+        bottom: 0.375rem;
+      }
+
+      .window_glyph.close {
+        width: 0.875rem;
+        height: 0.875rem;
+      }
+
+      .window_menu,
+      .context_item,
+      .os_btn,
+      .app_tab,
+      .settings_swatch {
+        min-height: 2.75rem;
+      }
+
+      .window_menu,
+      .context_item {
+        display: flex;
+        align-items: center;
       }
 
       .folder_item,
-      .launcher_item {
-        min-height: 3.25rem;
+      .launcher_item,
+      .drive_item {
+        min-height: 4rem;
+      }
+
+      /* The board is deliberately dense, but has to stay tappable. */
+      .mine_grid {
+        grid-template-columns: repeat(var(--mine-cols), 2rem);
+        grid-auto-rows: 2rem;
       }
 
       /* Hover never resolves on touch, so do not let it stick. */

@@ -51,7 +51,7 @@ export function defaultPersisted(): Persisted {
     bestTime: null,
     sound: false,
     saver: "marquee",
-    saverDelay: 60,
+    saverDelay: 300,
   };
 }
 
@@ -108,6 +108,8 @@ export function loadPersisted(): Persisted {
         : base.icons,
       positions: parsed.positions ?? base.positions,
       moved: parsed.moved ?? base.moved,
+      // Older saves may carry a sub-minute delay from a previous options set.
+      saverDelay: Math.max(parsed.saverDelay ?? base.saverDelay, 60),
     };
   } catch {
     return defaultPersisted();

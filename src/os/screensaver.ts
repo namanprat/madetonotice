@@ -123,6 +123,26 @@ export function startScreensaver(ctx: Ctx): void {
 }
 
 /**
+ * Every input that counts as "still here".
+ *
+ * `pointermove` alone is a mouse-only signal: a pointing device fires it
+ * constantly, so the timer never elapses. A touch device fires it only mid-
+ * gesture, so reading a window for the delay would raise the screensaver and
+ * the next tap would be spent dismissing it — which reads as the buttons
+ * being dead. The touch and focus events are what keep the two in step.
+ */
+const WAKE_EVENTS = [
+  "pointerdown",
+  "pointermove",
+  "touchstart",
+  "touchmove",
+  "click",
+  "keydown",
+  "wheel",
+  "focusin",
+] as const;
+
+/**
  * Arm the idle timer. Any real input resets it; while the saver is up, the
  * first input dismisses it instead.
  */
@@ -140,13 +160,8 @@ export function wireScreensaver(ctx: Ctx): void {
     );
   };
 
-  for (const evt of [
-    "pointerdown",
-    "pointermove",
-    "keydown",
-    "wheel",
-  ] as const) {
-    window.addEventListener(evt, reset, { passive: true });
+  for (const evt of WAKE_EVENTS) {
+    window.addEventListener(evt, reset, { passive: true, capture: true });
   }
 
   // Re-arm when the setting changes, and on boot.
