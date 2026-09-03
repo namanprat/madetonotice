@@ -1,4 +1,4 @@
-import { CLIPPY_TIPS, WALLPAPERS } from "@/content/os.ts";
+import { MASCOT_TIPS, WALLPAPERS } from "@/content/os.ts";
 import type { Ctx, MenuItem } from "@/os/context.ts";
 import {
   arrangeIcons,
@@ -12,6 +12,8 @@ import {
   wireMarquee,
 } from "@/os/icons.ts";
 import { loadPersisted, savePersisted } from "@/os/persist.ts";
+import { wireScreensaver } from "@/os/screensaver.ts";
+import { playSound, setSoundEnabled } from "@/os/sound.ts";
 import {
   closeLauncher,
   openLauncher,
@@ -31,11 +33,14 @@ import {
 const MENU_W = 160;
 const MENU_ROW = 26;
 
+/** How long the POST screen holds before the desktop appears. */
+const POST_MS = 2200;
+
 export function bootDesktop(root: HTMLElement): void {
   if (root.dataset.scriptInitialized) return;
   root.dataset.scriptInitialized = "true";
 
-  let clippyIndex = 0;
+  let mascotIndex = 0;
 
   const ctx: Ctx = {
     root,
@@ -57,8 +62,9 @@ export function bootDesktop(root: HTMLElement): void {
       tray: root.querySelector(".taskbar_tray"),
       context: root.querySelector(".context_wrap"),
       toastHost: root.querySelector(".toast_host"),
-      clippy: root.querySelector(".clippy_wrap"),
-      clippyText: root.querySelector(".clippy_text"),
+      mascot: root.querySelector(".mascot_wrap"),
+      mascotText: root.querySelector(".mascot_text"),
+      saver: root.querySelector(".saver_wrap"),
       crt: root.querySelector(".desktop_crt"),
       launcher: root.querySelector(".launcher_wrap"),
       winTemplate: root.querySelector("#os-window-template"),
@@ -69,15 +75,26 @@ export function bootDesktop(root: HTMLElement): void {
     applyChrome: () => {
       const wall =
         WALLPAPERS.find((w) => w.id === ctx.state.wallpaperId) ?? WALLPAPERS[0];
-      if (ctx.el.desk && wall) ctx.el.desk.style.backgroundColor = wall.value;
+      const desk = ctx.el.desk;
+      if (desk && wall) {
+        // Flat colours set a background-color; the tiled patterns are
+        // gradients, so they need an image plus a repeat size.
+        const isPattern = wall.value.includes("gradient");
+        desk.style.backgroundColor = isPattern
+          ? "var(--os-desktop)"
+          : wall.value;
+        desk.style.backgroundImage = isPattern ? wall.value : "none";
+        desk.style.backgroundSize = wall.size ?? "auto";
+      }
+
       root.style.setProperty("--os-icon-size", `${ctx.state.iconSize}rem`);
       if (ctx.state.titleColor) {
         root.style.setProperty("--os-title", ctx.state.titleColor);
       } else {
         root.style.removeProperty("--os-title");
       }
+
       const t = ctx.state.texture;
-      root.dataset.texture = t;
       if (ctx.el.crt) {
         ctx.el.crt.classList.toggle("has-grain", t === "grain" || t === "both");
         ctx.el.crt.classList.toggle(
@@ -85,6 +102,11 @@ export function bootDesktop(root: HTMLElement): void {
           t === "scanlines" || t === "both",
         );
       }
+
+      setSoundEnabled(ctx.state.sound);
+      ctx.el.tray
+        ?.querySelector("[data-sound-btn]")
+        ?.classList.toggle("is-muted", !ctx.state.sound);
     },
 
     toast: (message) => {
@@ -92,18 +114,25 @@ export function bootDesktop(root: HTMLElement): void {
       if (!host) return;
       const el = document.createElement("div");
       el.className = "toast_item";
-      el.textContent = message;
+      const label = document.createElement("span");
+      label.className = "toast_label";
+      label.textContent = "Notice";
+      const body = document.createElement("span");
+      body.className = "toast_text";
+      body.textContent = message;
+      el.append(label, body);
       host.appendChild(el);
+      playSound("notice");
       window.setTimeout(() => el.remove(), 4000);
     },
 
-    showClippy: (message) => {
-      const { clippy, clippyText } = ctx.el;
-      if (!clippy || !clippyText) return;
-      clippyText.textContent =
-        message ?? CLIPPY_TIPS[clippyIndex % CLIPPY_TIPS.length]!;
-      clippyIndex += 1;
-      clippy.classList.add("is-active");
+    showMascot: (message) => {
+      const { mascot, mascotText } = ctx.el;
+      if (!mascot || !mascotText) return;
+      mascotText.textContent =
+        message ?? MASCOT_TIPS[mascotIndex % MASCOT_TIPS.length]!;
+      mascotIndex += 1;
+      mascot.classList.add("is-active");
     },
 
     hideContext: () => {
@@ -127,6 +156,7 @@ export function bootDesktop(root: HTMLElement): void {
         btn.disabled = !!item.disabled;
         btn.addEventListener("click", () => {
           ctx.hideContext();
+          playSound("click");
           item.action();
         });
         menu.appendChild(btn);
@@ -159,6 +189,7 @@ export function bootDesktop(root: HTMLElement): void {
     paintWindow: () => {},
     focusWindow: () => {},
     refreshOpenFolders: () => {},
+    rearmScreensaver: () => {},
   };
 
   ctx.renderIcons = () => renderIcons(ctx);
@@ -173,6 +204,7 @@ export function bootDesktop(root: HTMLElement): void {
   wireTray(ctx);
   wireMarquee(ctx);
   wireIconKeys(ctx);
+  wireScreensaver(ctx);
 
   const desktopMenu = (): MenuItem[] => [
     { label: "Arrange Icons", action: () => arrangeIcons(ctx) },
@@ -186,12 +218,12 @@ export function bootDesktop(root: HTMLElement): void {
     { label: "Programs…", action: () => openLauncher(ctx) },
     { label: "Properties", action: () => ctx.openApp("settings") },
     {
-      label: "Delete All in Recycle Bin",
+      label: "Delete All in Unnoticed",
       action: () => {
         void emptyBin(ctx);
       },
     },
-    { label: "Restore All from Recycle Bin", action: () => restoreFromBin(ctx) },
+    { label: "Restore All from Unnoticed", action: () => restoreFromBin(ctx) },
   ];
 
   ctx.el.desk?.addEventListener("click", (e) => {
@@ -206,12 +238,35 @@ export function bootDesktop(root: HTMLElement): void {
     ctx.showContext(e.clientX, e.clientY, desktopMenu());
   });
 
-  ctx.el.clippy
-    ?.querySelector(".clippy_close")
-    ?.addEventListener("click", () => ctx.el.clippy?.classList.remove("is-active"));
-  ctx.el.clippy
-    ?.querySelector(".clippy_next")
-    ?.addEventListener("click", () => ctx.showClippy());
+  ctx.el.mascot
+    ?.querySelector(".mascot_close")
+    ?.addEventListener("click", () =>
+      ctx.el.mascot?.classList.remove("is-active"),
+    );
+  ctx.el.mascot
+    ?.querySelector(".mascot_next")
+    ?.addEventListener("click", () => ctx.showMascot());
+
+  // The eye tracks the pointer. It is the whole character of the thing: you
+  // notice it noticing you.
+  const pupil = ctx.el.mascot?.querySelector<HTMLElement>(".mascot_pupil");
+  if (pupil) {
+    window.addEventListener(
+      "pointermove",
+      (e) => {
+        const eye = ctx.el.mascot?.querySelector(".mascot_eye");
+        if (!eye) return;
+        const r = eye.getBoundingClientRect();
+        if (r.width === 0) return;
+        const dx = e.clientX - (r.left + r.width / 2);
+        const dy = e.clientY - (r.top + r.height / 2);
+        const angle = Math.atan2(dy, dx);
+        const reach = Math.min(Math.hypot(dx, dy) / 40, 1) * (r.width * 0.15);
+        pupil.style.transform = `translate(${Math.cos(angle) * reach}px, ${Math.sin(angle) * reach}px)`;
+      },
+      { passive: true },
+    );
+  }
 
   // Icons the user has not placed themselves re-pack when the viewport changes,
   // so a narrow phone never leaves one stranded off the right edge.
@@ -231,10 +286,18 @@ export function bootDesktop(root: HTMLElement): void {
   ctx.renderIcons();
   ctx.renderTaskbar();
 
-  window.setTimeout(() => {
-    ctx.el.splash?.classList.add("is-done");
-    window.setTimeout(() => ctx.el.splash?.remove(), 400);
+  // The POST screen is skippable: nobody should be made to sit through a boot
+  // sequence twice.
+  const finishBoot = () => {
+    const splash = ctx.el.splash;
+    if (!splash || splash.classList.contains("is-done")) return;
+    splash.classList.add("is-done");
+    window.setTimeout(() => splash.remove(), 400);
+    playSound("startup");
     ctx.toast("Welcome to Made to Notice");
-    ctx.showClippy();
-  }, 900);
+    ctx.showMascot();
+  };
+
+  ctx.el.splash?.addEventListener("click", finishBoot);
+  window.setTimeout(finishBoot, POST_MS);
 }

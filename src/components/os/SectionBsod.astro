@@ -1,0 +1,133 @@
+---
+/**
+ * The 404, as a stop error.
+ *
+ * A blue screen in the brand's lime rather than IBM blue — the one screen
+ * everyone recognises, saying the one thing this studio is named for.
+ */
+---
+
+<section class="bsod_wrap">
+  <div class="bsod_inner">
+    <p class="bsod_badge">Made to Notice</p>
+
+    <p class="bsod_text">
+      A fatal exception <strong>0E</strong> has occurred at <strong
+        >0028:C11B3ADC</strong
+      >. The current page was never made to be noticed.
+    </p>
+
+    <ul class="bsod_list">
+      <li>Press any key to return to the desktop.</li>
+      <li>
+        Press <strong>CTRL+ALT+DEL</strong> again to restart your computer. You will
+        lose any unsaved information in all open applications.
+      </li>
+    </ul>
+
+    <p class="bsod_prompt">
+      <a class="bsod_link" href="/">Press any key to continue</a>
+      <span class="bsod_caret" aria-hidden="true">_</span>
+    </p>
+  </div>
+</section>
+
+<script>
+  // Any key really does take you home — the joke only works if it is true.
+  document.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    window.location.href = "/";
+  });
+</script>
+
+<style is:global>
+  @layer components {
+    .bsod_wrap {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      min-height: 100svh;
+      padding: 2rem 1.5rem;
+      background-color: var(--brand-500);
+      color: var(--brand-text);
+      font-family: var(--os-font);
+      font-size: var(--os-type-ui);
+      line-height: 1.6;
+      -webkit-font-smoothing: none;
+      cursor: var(--os-cursor-arrow), default;
+    }
+
+    .bsod_inner {
+      width: min(46rem, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* The inverted title block a real stop error opens with. */
+    .bsod_badge {
+      align-self: center;
+      margin: 0;
+      padding: 0.125rem 0.75rem;
+      background-color: var(--brand-text);
+      color: var(--brand-500);
+      font-weight: 700;
+    }
+
+    .bsod_text {
+      margin: 0;
+    }
+
+    .bsod_list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .bsod_list li {
+      padding-left: 1.25rem;
+      text-indent: -1.25rem;
+    }
+
+    .bsod_list li::before {
+      content: "* ";
+    }
+
+    .bsod_prompt {
+      display: flex;
+      align-items: baseline;
+      gap: 0.125rem;
+      justify-content: center;
+      margin: 0.5rem 0 0;
+    }
+
+    .bsod_link {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .bsod_link:focus-visible {
+      outline: var(--os-hair) dotted currentColor;
+      outline-offset: 0.1875rem;
+    }
+
+    .bsod_caret {
+      animation: bsod-blink 1s steps(1) infinite;
+    }
+
+    @keyframes bsod-blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bsod_caret {
+        animation: none;
+      }
+    }
+  }
+</style>

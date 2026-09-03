@@ -51,8 +51,9 @@ export type Ctx = {
     tray: HTMLElement | null;
     context: HTMLElement | null;
     toastHost: HTMLElement | null;
-    clippy: HTMLElement | null;
-    clippyText: HTMLElement | null;
+    mascot: HTMLElement | null;
+    mascotText: HTMLElement | null;
+    saver: HTMLElement | null;
     crt: HTMLElement | null;
     launcher: HTMLElement | null;
     winTemplate: HTMLTemplateElement | null;
@@ -61,7 +62,7 @@ export type Ctx = {
   persist: () => void;
   applyChrome: () => void;
   toast: (message: string) => void;
-  showClippy: (message?: string) => void;
+  showMascot: (message?: string) => void;
   showContext: (x: number, y: number, items: MenuItem[]) => void;
   hideContext: () => void;
   closePopups: () => void;
@@ -74,6 +75,8 @@ export type Ctx = {
   paintWindow: (win: WindowState) => void;
   focusWindow: (id: string) => void;
   refreshOpenFolders: () => void;
+  /** Re-arm the idle timer after a screensaver setting changes. */
+  rearmScreensaver: () => void;
 };
 
 /** Escape a string for interpolation into an HTML attribute or text node. */

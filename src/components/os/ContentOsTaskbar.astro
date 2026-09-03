@@ -31,12 +31,14 @@
     >
       <img src="/os/icons/display.png" alt="" draggable="false" />
     </button>
-    <img
-      class="taskbar_tray_icon"
-      src="/os/icons/speaker.png"
-      alt="Volume"
-      draggable="false"
-    />
+    <button
+      type="button"
+      class="taskbar_tray_btn is-muted"
+      data-sound-btn
+      aria-label="Toggle sound"
+    >
+      <img src="/os/icons/speaker.png" alt="" draggable="false" />
+    </button>
     <button type="button" class="taskbar_clock">00:00</button>
     <div class="taskbar_calendar" hidden></div>
   </div>
@@ -197,7 +199,7 @@
     @media (hover: hover) {
       .start_item:hover {
         background-color: var(--os-menu-hover);
-        color: var(--os-title-text);
+        color: var(--os-menu-hover-text);
       }
     }
 
@@ -284,10 +286,14 @@
       cursor: default;
     }
 
-    .taskbar_tray_btn img,
-    .taskbar_tray_icon {
+    .taskbar_tray_btn img {
       width: 1.125rem;
       height: 1.125rem;
+    }
+
+    .taskbar_tray_btn.is-muted img {
+      filter: grayscale(1);
+      opacity: 0.5;
     }
 
     .taskbar_clock {
@@ -356,7 +362,7 @@
 
     .calendar_day.is-today {
       background-color: var(--os-menu-hover);
-      color: var(--os-title-text);
+      color: var(--os-menu-hover-text);
     }
 
     @media (hover: hover) {
@@ -376,7 +382,7 @@
         padding: 0 0.25rem;
       }
 
-      .taskbar_tray_icon {
+      .taskbar_tray_btn[data-sound-btn] {
         display: none;
       }
 

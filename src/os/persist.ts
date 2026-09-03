@@ -1,4 +1,4 @@
-import type { AppId, OsIcon, TextureId } from "@/content/os.ts";
+import type { AppId, OsIcon, SaverId, TextureId } from "@/content/os.ts";
 import { DEFAULT_ICONS, NOTEPAD_DEFAULT, WALLPAPERS } from "@/content/os.ts";
 
 export const STORAGE_KEY = "mtn-os-v3";
@@ -31,6 +31,10 @@ export type Persisted = {
   notepad: string;
   wordWrap: boolean;
   bestTime: number | null;
+  sound: boolean;
+  saver: SaverId;
+  /** Idle seconds before the screensaver takes over. */
+  saverDelay: number;
 };
 
 export function defaultPersisted(): Persisted {
@@ -45,6 +49,9 @@ export function defaultPersisted(): Persisted {
     notepad: NOTEPAD_DEFAULT,
     wordWrap: true,
     bestTime: null,
+    sound: false,
+    saver: "marquee",
+    saverDelay: 60,
   };
 }
 
@@ -55,23 +62,36 @@ export function defaultPersisted(): Persisted {
  * reach people who already have a saved desktop, but their own changes must
  * survive. So authored fields come from `DEFAULT_ICONS` and user-owned state
  * (which folder an icon sits in) comes from what was saved. Icons the user
- * created themselves are kept as-is; defaults they have never seen are added.
+ * created themselves are kept as-is; defaults they have never seen are added;
+ * and defaults that have since been retired are dropped rather than left
+ * behind as orphans no window can reach.
  */
 function mergeIcons(saved: OsIcon[]): OsIcon[] {
   const defaults = new Map(DEFAULT_ICONS.map((i) => [i.id, i]));
   const seen = new Set<string>();
+  const merged: OsIcon[] = [];
 
-  const merged = saved.map((icon) => {
+  for (const icon of saved) {
     const base = defaults.get(icon.id);
-    if (!base) return icon;
-    seen.add(icon.id);
-    return { ...base, folderId: icon.folderId };
-  });
+    if (base) {
+      seen.add(icon.id);
+      merged.push({ ...base, folderId: icon.folderId });
+    } else if (isUserCreated(icon)) {
+      merged.push(icon);
+    }
+    // Anything else was a default that has since been removed. Drop it.
+  }
 
-  return [
-    ...merged,
-    ...DEFAULT_ICONS.filter((i) => !seen.has(i.id)).map((i) => ({ ...i })),
-  ];
+  for (const icon of DEFAULT_ICONS) {
+    if (!seen.has(icon.id)) merged.push({ ...icon });
+  }
+
+  return merged;
+}
+
+/** `newFolder` mints these ids, so the prefix is what marks a user's own item. */
+function isUserCreated(icon: OsIcon): boolean {
+  return icon.id.startsWith("folder-");
 }
 
 export function loadPersisted(): Persisted {

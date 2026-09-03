@@ -136,9 +136,69 @@ export async function confirmBox(
   return (await openDialog(ctx, opts)) === true;
 }
 
-export async function alertBox(
+/**
+ * A Win95 property sheet: icon, name, a rule, then a definition list of
+ * fields. Read-only, dismissed with OK — the same shape as right-clicking a
+ * file in Explorer and choosing Properties.
+ */
+export function propertiesBox(
   ctx: Ctx,
-  opts: Omit<DialogOpts, "value" | "cancelLabel">,
-): Promise<void> {
-  await openDialog(ctx, { ...opts, cancelLabel: null });
+  opts: {
+    title: string;
+    name: string;
+    icon: string;
+    fields: [string, string][];
+  },
+): void {
+  const host = document.createElement("div");
+  host.className = "dialog_wrap";
+  host.setAttribute("role", "dialog");
+  host.setAttribute("aria-modal", "true");
+  host.setAttribute("aria-label", opts.title);
+
+  const rows = opts.fields
+    .map(
+      ([k, v]) =>
+        `<div class="props_row"><dt>${esc(k)}:</dt><dd>${esc(v)}</dd></div>`,
+    )
+    .join("");
+
+  host.innerHTML = `
+    <div class="dialog_frame props_frame">
+      <div class="dialog_titlebar">
+        <span class="dialog_title">${esc(opts.title)}</span>
+        <div class="window_controls">
+          <button type="button" class="window_ctrl" data-dialog="ok" aria-label="Close">
+            <span class="window_glyph close"></span>
+          </button>
+        </div>
+      </div>
+      <div class="props_head">
+        <img class="props_icon" src="${esc(opts.icon)}" alt="" draggable="false" />
+        <span class="props_name">${esc(opts.name)}</span>
+      </div>
+      <hr class="props_rule" />
+      <dl class="props_list">${rows}</dl>
+      <div class="dialog_actions">
+        <button type="button" class="os_btn" data-dialog="ok">OK</button>
+      </div>
+    </div>`;
+
+  const close = () => {
+    document.removeEventListener("keydown", onKey, true);
+    host.remove();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape" || e.key === "Enter") {
+      e.preventDefault();
+      close();
+    }
+  };
+
+  host
+    .querySelectorAll<HTMLElement>("[data-dialog]")
+    .forEach((b) => b.addEventListener("click", close));
+  document.addEventListener("keydown", onKey, true);
+  ctx.root.appendChild(host);
+  host.querySelector<HTMLElement>('.os_btn[data-dialog="ok"]')?.focus();
 }

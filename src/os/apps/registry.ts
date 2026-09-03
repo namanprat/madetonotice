@@ -3,6 +3,7 @@ import { aboutApp } from "@/os/apps/about.ts";
 import { folderApp } from "@/os/apps/folder.ts";
 import { ieApp } from "@/os/apps/ie.ts";
 import { mailApp } from "@/os/apps/mail.ts";
+import { myComputerApp } from "@/os/apps/my-computer.ts";
 import { minesweeperApp } from "@/os/apps/minesweeper.ts";
 import { notepadApp } from "@/os/apps/notepad.ts";
 import { settingsApp } from "@/os/apps/settings.ts";
@@ -27,7 +28,7 @@ export const APPS: Record<AppId, AppModule> = {
   minesweeper: minesweeperApp,
   settings: settingsApp,
   projects: folderApp,
-  "my-computer": folderApp,
+  "my-computer": myComputerApp,
   "recycle-bin": folderApp,
   folder: folderApp,
 };

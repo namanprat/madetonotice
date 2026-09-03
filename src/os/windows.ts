@@ -1,4 +1,4 @@
-import { CLIPPY_CONTEXT, IE_HOME, type AppId } from "@/content/os.ts";
+import { MASCOT_CONTEXT, IE_HOME, type AppId } from "@/content/os.ts";
 import { APPS, appTitle } from "@/os/apps/registry.ts";
 import type { Menu } from "@/os/apps/types.ts";
 import type { Ctx, OpenOpts } from "@/os/context.ts";
@@ -162,8 +162,8 @@ export function focusWindow(ctx: Ctx, id: string): void {
   }
 
   ctx.renderTaskbar();
-  const tip = CLIPPY_CONTEXT[win.app];
-  if (tip) ctx.showClippy(tip);
+  const tip = MASCOT_CONTEXT[win.app];
+  if (tip) ctx.showMascot(tip);
 }
 
 export function closeWindow(ctx: Ctx, id: string): void {

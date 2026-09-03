@@ -77,7 +77,7 @@ export const mailApp: AppModule = {
       link.remove();
 
       ctx.toast(`Opening mail to ${MAIL_TO}…`);
-      ctx.showClippy("Thanks for writing. We'll be in touch.");
+      ctx.showMascot("Thanks for writing. We'll be in touch.");
     });
   },
 };

@@ -2,23 +2,14 @@ import type { OsIcon } from "@/content/os.ts";
 import type { AppModule } from "@/os/apps/types.ts";
 import type { Ctx, MenuItem } from "@/os/context.ts";
 import { esc } from "@/os/context.ts";
+import { propertiesBox } from "@/os/dialog.ts";
 import { emptyBin, restoreFromBin } from "@/os/icons.ts";
 import type { WindowState } from "@/os/persist.ts";
-
-/** The synthetic drive entry My Computer shows above its real children. */
-const DISK_C: OsIcon = {
-  id: "disk-c",
-  label: "Disk (C:)",
-  icon: "/os/icons/c.png",
-  app: "folder",
-  folderId: "my-computer",
-};
 
 /** Which `folderId` a window is showing the contents of. */
 export function folderKey(win: WindowState): string {
   switch (win.app) {
     case "recycle-bin":
-    case "my-computer":
     case "projects":
       return win.app;
     default:
@@ -27,10 +18,32 @@ export function folderKey(win: WindowState): string {
 }
 
 export function folderChildren(ctx: Ctx, win: WindowState): OsIcon[] {
-  if (win.app === "my-computer") {
-    return [DISK_C, ...ctx.state.icons.filter((i) => i.folderId === "disk-c")];
-  }
+  // Projects is a view across both vertical drives, not a folder of its own.
+  if (win.app === "projects") return ctx.state.icons.filter((i) => i.meta);
   return ctx.state.icons.filter((i) => i.folderId === folderKey(win));
+}
+
+/** Fields for the Properties sheet on a project file. */
+export function showProperties(ctx: Ctx, icon: OsIcon): void {
+  const fields: [string, string][] = icon.meta
+    ? [
+        ["Type", `${icon.meta.vertical} project`],
+        ["Client", icon.meta.client],
+        ["Year", icon.meta.year],
+        ["Status", icon.meta.status],
+        ["Deliverables", icon.meta.deliverables.join(", ")],
+      ]
+    : [
+        ["Type", "Shortcut"],
+        ["Location", icon.folderId ?? "Desktop"],
+      ];
+
+  propertiesBox(ctx, {
+    title: `${icon.label} Properties`,
+    name: icon.label,
+    icon: icon.icon,
+    fields,
+  });
 }
 
 function itemHtml(icon: OsIcon): string {
@@ -141,15 +154,6 @@ export const folderApp: AppModule = {
           const id = btn.dataset.openIcon;
           if (!id) return;
 
-          if (id === "disk-c") {
-            ctx.openApp("folder", {
-              folderId: "disk-c",
-              title: "Disk (C:)",
-              icon: "/os/icons/c.png",
-            });
-            return;
-          }
-
           // Inside the bin, a click restores rather than opens.
           const child = ctx.state.icons.find((i) => i.id === id);
           if (child?.folderId === "recycle-bin") {
@@ -163,6 +167,22 @@ export const folderApp: AppModule = {
           }
 
           ctx.openIcon(id);
+        });
+
+        btn.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const child = ctx.state.icons.find(
+            (i) => i.id === btn.dataset.openIcon,
+          );
+          if (!child) return;
+          ctx.showContext(e.clientX, e.clientY, [
+            { label: "Open", action: () => ctx.openIcon(child.id) },
+            {
+              label: "Properties",
+              action: () => showProperties(ctx, child),
+            },
+          ]);
         });
       },
     );

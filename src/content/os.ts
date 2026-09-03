@@ -24,28 +24,113 @@ export type OsIcon = {
   /** Cannot be renamed, deleted, or dragged to the Recycle Bin. */
   protected?: boolean;
   url?: string;
+  /** Present on project items; drives the Properties sheet. */
+  meta?: ProjectMeta;
 };
 
 export type Wallpaper = {
   id: string;
   label: string;
+  /** A flat colour, or a CSS gradient standing in for a tiled pattern. */
   value: string;
+  /** Set for the tiled patterns so they repeat rather than stretch. */
+  size?: string;
+};
+
+/** A drive in My Computer. The two verticals are drives, not folders. */
+export type Drive = {
+  id: string;
+  letter: string;
+  label: string;
+  icon: string;
+  /** Fraction of the capacity bar that reads as used. */
+  used: number;
+};
+
+export type ProjectMeta = {
+  client: string;
+  vertical: string;
+  year: string;
+  deliverables: string[];
+  status: string;
 };
 
 /** Desktop texture overlay. */
 export type TextureId = "none" | "grain" | "scanlines" | "both";
+
+/** Screensaver style. */
+export type SaverId = "off" | "marquee" | "stars";
 
 export const IE_HOME = "https://wearenotice.com";
 export const PAINT_URL = "https://jspaint.app";
 /** Inbox address shown in Mail and used for mailto. */
 export const MAIL_TO = "hello@madetonotice.art";
 
+/**
+ * Flat colours plus tiled patterns, the way Win95 shipped Bricks and
+ * Houndstooth. The patterns are gradients, so they cost nothing to ship.
+ */
 export const WALLPAPERS: Wallpaper[] = [
   { id: "teal", label: "Teal", value: "var(--os-desktop)" },
-  { id: "face", label: "Face", value: "var(--os-face-dark)" },
-  { id: "brand", label: "Brand", value: "var(--brand-500)" },
+  { id: "brand", label: "Notice", value: "var(--brand-500)" },
   { id: "dark", label: "Night", value: "var(--dark-900)" },
+  {
+    id: "dots",
+    label: "Attention",
+    value:
+      "radial-gradient(circle at 50% 50%, var(--brand-500) 0 1px, transparent 1px)",
+    size: "0.75rem 0.75rem",
+  },
+  {
+    id: "rule",
+    label: "Ruled",
+    value:
+      "repeating-linear-gradient(0deg, color-mix(in srgb, var(--brand-500) 22%, transparent) 0 1px, transparent 1px 0.75rem)",
+    size: "auto",
+  },
+  {
+    id: "weave",
+    label: "Weave",
+    value:
+      "repeating-linear-gradient(45deg, color-mix(in srgb, var(--brand-500) 16%, transparent) 0 2px, transparent 2px 6px)",
+    size: "auto",
+  },
 ];
+
+/** Studio capacity, surfaced in My Computer as a disk-space gauge. */
+export const CAPACITY = { total: 4, taken: 3 };
+
+export const DRIVES: Drive[] = [
+  {
+    id: "disk-c",
+    letter: "C:",
+    label: "Studio",
+    icon: "/os/icons/c.png",
+    used: 0.62,
+  },
+  {
+    id: "marketing",
+    letter: "M:",
+    label: "Marketing",
+    icon: "/os/icons/rom.png",
+    used: 0.78,
+  },
+  {
+    id: "product",
+    letter: "P:",
+    label: "Product Design",
+    icon: "/os/icons/rom.png",
+    used: 0.54,
+  },
+];
+
+export const SAVERS: { id: SaverId; label: string }[] = [
+  { id: "off", label: "(None)" },
+  { id: "marquee", label: "Scrolling Marquee" },
+  { id: "stars", label: "Flying Notices" },
+];
+
+export const SAVER_DELAYS = [15, 30, 60, 300];
 
 export const TEXTURES: { id: TextureId; label: string }[] = [
   { id: "none", label: "(None)" },
@@ -77,7 +162,7 @@ export const DEFAULT_ICONS: OsIcon[] = [
   },
   {
     id: "recycle-bin",
-    label: "Recycle Bin",
+    label: "Unnoticed",
     icon: "/os/icons/bin.png",
     app: "recycle-bin",
     folderId: null,
@@ -146,22 +231,66 @@ export const DEFAULT_ICONS: OsIcon[] = [
     protected: true,
   },
 
-  // Inside Projects
+  // Filed under the vertical drives
   {
-    id: "project-notice",
-    label: "wearenotice.com",
-    icon: "/os/icons/ie.png",
+    id: "proj-launch",
+    label: "Signal Launch",
+    icon: "/os/icons/doc1.png",
     app: "ie",
-    folderId: "projects",
+    folderId: "marketing",
     url: IE_HOME,
+    meta: {
+      client: "Confidential",
+      vertical: "Marketing",
+      year: "2026",
+      deliverables: ["Positioning", "Campaign", "Go-to-market"],
+      status: "Shipped",
+    },
   },
   {
-    id: "project-studio",
-    label: "Studio site",
-    icon: "/os/icons/ie.png",
+    id: "proj-rebrand",
+    label: "Counterweight",
+    icon: "/os/icons/doc1.png",
     app: "ie",
-    folderId: "projects",
+    folderId: "marketing",
+    url: IE_HOME,
+    meta: {
+      client: "Confidential",
+      vertical: "Marketing",
+      year: "2025",
+      deliverables: ["Brand identity", "Launch film"],
+      status: "Shipped",
+    },
+  },
+  {
+    id: "proj-console",
+    label: "Console",
+    icon: "/os/icons/file3.png",
+    app: "ie",
+    folderId: "product",
+    url: IE_HOME,
+    meta: {
+      client: "Confidential",
+      vertical: "Product Design",
+      year: "2026",
+      deliverables: ["Design system", "Web app", "Handoff"],
+      status: "In progress",
+    },
+  },
+  {
+    id: "proj-atlas",
+    label: "Atlas",
+    icon: "/os/icons/file3.png",
+    app: "ie",
+    folderId: "product",
     url: "https://madetonotice.art",
+    meta: {
+      client: "Confidential",
+      vertical: "Product Design",
+      year: "2025",
+      deliverables: ["Research", "End-to-end product"],
+      status: "Shipped",
+    },
   },
 
   // Inside Disk (C:)
@@ -213,13 +342,14 @@ across two verticals:
 Say hello: ${MAIL_TO}
 `;
 
-export const CLIPPY_TIPS = [
-  "It looks like you're exploring Made to Notice. Double-click an icon to open it.",
+export const MASCOT_TIPS = [
+  "It looks like you're looking. Double-click anything to open it.",
   "Made to Notice is an external division of Notice — a limited number of client projects, marketing and product design.",
-  "Tip: right-click the desktop for Arrange, New Folder, or Properties.",
+  "Right-click the desktop for Arrange, New Folder, or Properties.",
+  "Nothing here is decoration. Every window does what it says.",
 ];
 
-export const CLIPPY_CONTEXT: Partial<Record<AppId, string>> = {
+export const MASCOT_CONTEXT: Partial<Record<AppId, string>> = {
   mail: "Starting a project? Tell us which vertical and we'll take it from there.",
   ie: "Browsing the web inside the OS. Home is wearenotice.com.",
   paint: "Paint is running in an iframe. Make something Notice-worthy.",

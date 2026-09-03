@@ -1,5 +1,6 @@
 import { ICON_SIZES, START_ITEMS } from "@/content/os.ts";
 import type { Ctx } from "@/os/context.ts";
+import { playSound } from "@/os/sound.ts";
 import { esc } from "@/os/context.ts";
 
 export function renderTaskbar(ctx: Ctx): void {
@@ -291,5 +292,16 @@ export function wireTray(ctx: Ctx): void {
     e.stopPropagation();
     const r = sizeBtn.getBoundingClientRect();
     openSizes(r.left, r.top);
+  });
+
+  // The speaker is a real mute toggle. Sound stays off until this is clicked,
+  // which doubles as the gesture that lets the audio context start.
+  const soundBtn = ctx.el.tray?.querySelector<HTMLElement>("[data-sound-btn]");
+  soundBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    ctx.state.sound = !ctx.state.sound;
+    ctx.persist();
+    ctx.applyChrome();
+    if (ctx.state.sound) playSound("notice");
   });
 }
